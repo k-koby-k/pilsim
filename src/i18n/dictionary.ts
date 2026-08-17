@@ -1596,6 +1596,8 @@ const en = {
   'sim.timing.timeBedtime': 'at bedtime',
   'sim.timing.timeAnyConsistent': 'at the same time every day — any hour that suits you',
   'sim.timing.gapsHeading': 'Timing — what this does not answer',
+  'sim.timing.headlineHeading': 'When to take it',
+  'sim.timing.headlineDetailLink': 'Why — full timing evidence below ↓',
 } satisfies Record<string, DictValue>
 
 export type DictKey = keyof typeof en
@@ -3141,6 +3143,8 @@ const uz: Partial<Record<DictKey, DictValue>> = {
   'sim.timing.timeBedtime': 'yotishdan oldin',
   'sim.timing.timeAnyConsistent': 'har kuni bir xil vaqtda — sizga qulay boʻlgan istalgan soatda',
   'sim.timing.gapsHeading': 'Vaqt tanlash — bu nimaga javob bermaydi',
+  'sim.timing.headlineHeading': 'Qachon ichish kerak',
+  'sim.timing.headlineDetailLink': 'Nega — toʻliq dalillar quyida ↓',
 }
 
 // ============================================================================
@@ -4722,6 +4726,8 @@ const ru: Partial<Record<DictKey, DictValue>> = {
   'sim.timing.timeBedtime': 'перед сном',
   'sim.timing.timeAnyConsistent': 'в одно и то же время каждый день — в любой удобный час',
   'sim.timing.gapsHeading': 'Время приёма — на что это не отвечает',
+  'sim.timing.headlineHeading': 'Когда принимать',
+  'sim.timing.headlineDetailLink': 'Почему — подробные доказательства ниже ↓',
 }
 
 export const dictionaries: { en: Record<DictKey, DictValue>; uz: Partial<Record<DictKey, DictValue>>; ru: Partial<Record<DictKey, DictValue>> } = {

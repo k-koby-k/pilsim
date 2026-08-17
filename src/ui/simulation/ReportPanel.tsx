@@ -670,9 +670,58 @@ function TimingCitation({ citation }: { citation?: Provenance }) {
   return <CitationDisclosure citation={citation} />
 }
 
+/**
+ * The short answer, next to the regimen and dose it belongs with — what to take, how
+ * much, and now when — so a reader never has to scroll into the Evidence zone to learn
+ * the one fact she actually asked for. One line per drug, real answer even when that
+ * answer is "any consistent time": a missing row reads as "we don't know", which is the
+ * impression that buried this feature the first time.
+ *
+ * Never recomputes anything — `timing` is the same `buildTiming` result rendered in full
+ * by `<TimingSection>` below, just reformatted. `DoseTiming.suggested` can only ever rest
+ * on tolerability or pharmacokinetic grounds (`claimsOutcomeBenefit: false` is enforced in
+ * the type itself, see src/report/timing.ts), so naming an hour here never implies the
+ * contested cardiovascular-outcome claim — that question stays in the full section, whose
+ * verdict the "why" link below points to.
+ */
+function TimingHeadline({
+  run,
+  timing,
+  t,
+}: {
+  run: CompletedRun
+  timing: PlanTiming
+  t: ReturnType<typeof useT>
+}) {
+  if (!timing.drugs.length) return null
+  return (
+    <div className="sim-timing-headline">
+      <h5>{t('sim.timing.headlineHeading')}</h5>
+      <ul className="sim-timing-headline-list">
+        {timing.drugs.map((d) => {
+          const dose = run.regimen.doses.find((x) => x.substanceId === d.substanceId)
+          const perDay = dose && dose.perDay > 1 ? ` × ${dose.perDay}` : ''
+          return (
+            <li key={d.substanceId}>
+              <span lang="en">
+                {d.name} {dose ? `${dose.mg} mg${perDay}` : ''}
+              </span>
+              {' — '}
+              {t(TIMING_TIME_LABEL_KEY[d.suggested])}
+            </li>
+          )
+        })}
+      </ul>
+      <a href="#sim-timing-detail" className="sim-timing-headline-link">
+        {t('sim.timing.headlineDetailLink')}
+      </a>
+    </div>
+  )
+}
+
 function TimingSection({ timing, t }: { timing: PlanTiming; t: ReturnType<typeof useT> }) {
   return (
-    <section className="sim-report-section sim-timing">
+    <section id="sim-timing-detail" className="sim-report-section sim-timing">
       <h4>{t('sim.timing.heading')}</h4>
 
       {/* THE OUTCOME VERDICT. It must read before any suggested hour below it —
@@ -928,6 +977,11 @@ export function ReportPanel({
               that licenses it, and the trial the projected pressure change is
               fitted to — each opening onto the source's own words. */}
           <EvidenceLedger run={run} data={pilsimData} ruleCount={hits.length} />
+
+          {/* What/how much is right above; this is when — the fact a prescriber reads
+              as part of the same answer, not a detail to dig for in the Evidence zone.
+              Full reasoning and the outcome verdict stay in <TimingSection> below. */}
+          <TimingHeadline run={run} timing={timing.plan} t={t} />
 
           {searchSpaceNote && (
             <p className="sim-searchspace">
