@@ -1,0 +1,296 @@
+/* The AI panel.
+
+   The design job here is separation, not decoration. Everything else on this
+   page is a measurement with a citation behind it; this one block is prose a
+   model wrote. So it is built out of a different material: a dashed rule where
+   every other card has a hairline, a tinted ground where every other card is
+   white, and a standing mark inside the text block itself that travels with the
+   prose if anyone screenshots it.
+
+   Colours alias the shell tokens like the rest of this view — `--modified` is
+   already the product's "this did not come from the source" hue, which is
+   exactly the right meaning to reuse. */
+
+.ai-panel {
+  --ai: var(--sim-modified, #6b3fb5);
+  --ai-wash: color-mix(in srgb, var(--ai) 6%, var(--surface-1));
+  --ai-line: color-mix(in srgb, var(--ai) 32%, var(--sim-border));
+
+  background: var(--ai-wash);
+  border: 1px dashed var(--ai-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ai-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+.ai-title { display: flex; gap: var(--sp-3); align-items: flex-start; min-width: 0; }
+.ai-title h3 { font-size: var(--fs-md, 15px); font-weight: 650; margin: 0; }
+.ai-mark {
+  flex: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-inverse);
+  background: var(--ai);
+  border-radius: var(--sim-radius);
+  padding: 4px 7px;
+  margin-top: 2px;
+}
+.ai-sub {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--sim-muted-c);
+  max-width: var(--measure, 68ch);
+  line-height: 1.5;
+}
+.ai-actions { display: flex; gap: var(--sp-2); flex-wrap: wrap; align-items: center; }
+
+.ai-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+  margin: 0;
+  font-size: var(--fs-xs, 12px);
+  font-family: var(--font-mono);
+  color: var(--sim-muted-c);
+}
+.ai-meta-sep { color: var(--sim-faint); }
+.ai-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--sim-faint); flex: none;
+}
+.ai-dot.is-live { background: var(--sim-ok); }
+
+/* --------------------------------------------------------------- the prose */
+
+.ai-body {
+  position: relative;
+  border-left: 3px solid var(--ai);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-4);
+  background: var(--surface-1);
+  border-radius: 0 var(--sim-radius) var(--sim-radius) 0;
+}
+.ai-body-mark {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ai);
+  margin-bottom: var(--sp-2);
+}
+/* `pre-line` keeps a single newline the model wrote as a line break without
+   this file having to guess whether it meant a paragraph. Blank lines are split
+   into real paragraphs in AiPanel.tsx; everything else is left as written,
+   because reflowing a model's output is one more thing that could change what
+   it appears to say. */
+.ai-prose p {
+  margin: 0 0 var(--sp-3);
+  max-width: var(--measure, 68ch);
+  line-height: var(--lh-body, 1.6);
+  white-space: pre-line;
+}
+.ai-prose p:last-child { margin-bottom: 0; }
+.ai-waiting { margin: 0; color: var(--sim-faint); font-style: italic; }
+
+/* The caret is what makes a stream read as a stream. It sits after the text
+   rather than inside it, so it never lands between a number and its unit. */
+.ai-caret {
+  display: inline-block;
+  width: 7px; height: 1.05em;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  background: var(--ai);
+  animation: ai-blink 1s steps(2, start) infinite;
+}
+@keyframes ai-blink { to { visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) { .ai-caret { animation: none; opacity: 0.6; } }
+
+/* ------------------------------------------------------- numbers in prose */
+
+.ai-num { font-family: var(--font-mono); font-size: 0.94em; white-space: nowrap; }
+
+/* Supported: a quiet dotted underline. It must be findable, not shouted —
+   the ordinary case is that every number is fine. */
+.ai-num.is-supported {
+  border-bottom: 1px dotted var(--prov-cited-fg);
+  color: var(--prov-cited-fg);
+  cursor: help;
+}
+.ai-num.is-pending { color: var(--sim-faint); }
+
+/* Unsupported: struck through, washed, and labelled in place. A reader must
+   not be able to lift this figure out of the paragraph and believe it. */
+.ai-num.is-unsupported {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--sev-major-wash);
+  border: 1px solid var(--sev-major-line);
+  border-radius: var(--sim-radius);
+  padding: 0 5px;
+  color: var(--sev-major-fg);
+}
+.ai-num.is-unsupported .ai-num-text { text-decoration: line-through; }
+.ai-num-flag {
+  font-size: 9.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* -------------------------------------------------------------- the verdict */
+
+.ai-verdict {
+  font-size: var(--fs-xs, 12px);
+  line-height: 1.55;
+  padding: var(--sp-3);
+  border-radius: var(--sim-radius);
+  max-width: var(--measure, 68ch);
+}
+.ai-verdict.is-clean {
+  background: var(--prov-cited-wash);
+  color: var(--prov-cited-fg);
+  border: 1px solid var(--prov-cited-line);
+}
+.ai-verdict.is-dirty {
+  background: var(--sev-major-wash);
+  color: var(--sev-major-fg);
+  border: 1px solid var(--sev-major-line);
+}
+
+/* ------------------------------------------------------------- suggestions */
+
+.ai-suggests h4 { font-size: var(--fs-sm, 13.5px); font-weight: 650; margin: 0 0 var(--sp-2); }
+.ai-suggests-note {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--sim-muted-c);
+  max-width: var(--measure, 68ch);
+  line-height: 1.5;
+}
+.ai-suggests ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.ai-suggests li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-1);
+  border: 1px solid var(--sim-border);
+  border-radius: var(--sim-radius);
+  padding: var(--sp-3);
+}
+.ai-suggest-body { min-width: 0; flex: 1 1 22ch; }
+.ai-suggest-body strong { display: block; font-size: var(--fs-sm, 13.5px); }
+.ai-suggest-body p {
+  margin: 4px 0 0;
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--sim-muted-c);
+  line-height: 1.5;
+}
+.ai-rejected {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--sim-muted-c);
+  max-width: var(--measure, 68ch);
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------------- absent / failed */
+
+.ai-empty {
+  margin: 0;
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--sim-muted-c);
+  max-width: var(--measure, 68ch);
+}
+.ai-failure {
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.55;
+  padding: var(--sp-3);
+  border-radius: var(--sim-radius);
+  background: var(--sev-minor-wash);
+  color: var(--sev-minor-fg);
+  border: 1px solid var(--sev-minor-line);
+  max-width: var(--measure, 68ch);
+}
+.ai-failure.is-quiet { background: var(--surface-2); color: var(--sim-muted-c); border-color: var(--sim-border); }
+.ai-failure-detail {
+  display: block; margin-top: var(--sp-1);
+  font-family: var(--font-mono); font-size: 11px; opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+.ai-failure-note { margin: var(--sp-2) 0 var(--sp-2); font-size: var(--fs-sm, 13.5px); opacity: 0.9; }
+
+/* ---------------------------------------------------------------- settings */
+
+.ai-settings {
+  background: var(--surface-2);
+  border: 1px solid var(--sim-border);
+  border-radius: var(--sim-radius);
+  padding: var(--sp-4);
+  display: flex; flex-direction: column; gap: var(--sp-3);
+}
+.ai-settings-head { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.ai-settings-head h4 { margin: 0; font-size: var(--fs-sm, 13.5px); font-weight: 650; }
+.ai-settings-intro,
+.ai-provider-blurb {
+  margin: 0; font-size: var(--fs-sm, 13.5px); color: var(--sim-muted-c);
+  max-width: var(--measure, 68ch); line-height: 1.5;
+}
+.ai-provider-blurb em { font-style: normal; color: var(--sim-faint); }
+.ai-provider-blurb.is-ready em { color: var(--sim-ok); font-weight: 600; }
+
+.ai-field { display: flex; flex-direction: column; gap: 4px; }
+.ai-field > span { font-size: var(--fs-xs, 12px); font-weight: 600; color: var(--sim-muted-c); }
+.ai-field input,
+.ai-field select {
+  font: inherit; font-size: var(--fs-sm, 13.5px);
+  padding: 7px 9px;
+  background: var(--surface-1);
+  color: var(--sim-text);
+  border: 1px solid var(--sim-border-strong);
+  border-radius: var(--sim-radius);
+  width: 100%;
+}
+.ai-field input:focus-visible,
+.ai-field select:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+.ai-warning {
+  margin: 0;
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.5;
+  color: var(--sev-moderate-fg);
+  background: var(--sev-moderate-wash);
+  border: 1px solid var(--sev-moderate-line);
+  border-radius: var(--sim-radius);
+  padding: var(--sp-2) var(--sp-3);
+  max-width: var(--measure, 68ch);
+}
+
+/* A scene recommendation is the one thing the model can propose that cannot
+   move a number, so it is offered quietly rather than as a headline action. */
+.ai-scene {
+  display: flex; flex-wrap: wrap; gap: var(--sp-3);
+  align-items: center; justify-content: space-between;
+  background: var(--surface-1);
+  border: 1px solid var(--sim-border);
+  border-radius: var(--sim-radius);
+  padding: var(--sp-3);
+}
+.ai-scene-note { color: var(--sim-faint) !important; }

@@ -1,0 +1,901 @@
+/*
+ * Organ illustration styles — clean clinical light.
+ *
+ * COLOUR POLICY. The shell's :root in src/ui/shell/styles.css owns the interface palette
+ * and is the only place interface colour values live. The ANATOMICAL palette has no
+ * counterpart there — no shell token means "liver" or "myocardium" — so it is declared
+ * once here, on .pil-organ-figure, and referenced from TypeScript through the ORGAN map
+ * in channels.ts. That keeps organ colour in exactly one file rather than scattered across
+ * nine components. Interface colour, per-drug hue and severity all come from shell tokens.
+ *
+ * The one deliberate exception is the V1 diverging ramp (TINT_SUPPRESSED / TINT_BASELINE /
+ * TINT_ACTIVATED in channels.ts). Those three anchors are a specification constant from
+ * research/04-ORGAN-EFFECT-MAP.md §3, not a theme choice, and one of them is asserted by
+ * organs.test.ts. They stay as literals in the module that defines the ramp.
+ *
+ * MOTION POLICY. Only three things move, and each one is a signal: the heart beats at the
+ * modelled rate and depth, sprites travel a path at the modelled flow, and a limb swells
+ * to the modelled interstitial volume. Cough is an event, so it is allowed a 250 ms jolt.
+ * Nothing else animates, and everything stops under prefers-reduced-motion.
+ */
+
+.pil-organ-figure,
+.pil-anatomy {
+  /* --- illustration palette: the ONLY place these values are written --- */
+  --pil-skin: #f4e6dc;
+  --pil-skin-shade: #ead5c8;
+  --pil-skin-line: #c4a495;
+
+  --pil-myocardium: #cd6f77;
+  --pil-atrium: #dc9aa0;
+  --pil-node: #7d5a5f;
+  --pil-artery: #cf6f72;
+  --pil-vein: #7f9bc2;
+  --pil-perfusion: #fdf3f0;
+
+  --pil-lung: #f6dbd7;
+  --pil-lung-shade: #d59d98;
+  --pil-lung-line: #c98d88;
+  --pil-airway: #c8d3dd;
+  --pil-nerve: #b08b3a;
+
+  --pil-liver: #b07a63;
+  --pil-liver-deep: #9a6653;
+  --pil-gallbladder: #8fa86d;
+  --pil-hepatocyte: #d8a45e;
+  --pil-cyp3a4: #a8722f;
+
+  --pil-kidney: #b46e60;
+  --pil-kidney-medulla: #cf9285;
+  --pil-kidney-line: #8f5348;
+  --pil-kidney-pelvis: #e2d4c4;
+  --pil-adrenal: #e0c98f;
+  --pil-adrenal-cortex: #efe0b2;
+  --pil-adrenal-line: #bfa059;
+  --pil-adrenal-medulla: #c9ae74;
+  --pil-aldosterone: #c9973c;
+
+  --pil-tubule: #d9cbb4;
+  --pil-tubule-deep: #c3b092;
+  --pil-filtrate: #cfdce8;
+  --pil-creatinine: #7b8a99;
+
+  --pil-ion-na: #2f8f4e;
+  --pil-ion-k: #7343c4;
+  --pil-ion-urate: #b5731e;
+  --pil-ion-cl: #2f8fa3;
+  --pil-ion-h2o: #2f7fc4;
+
+  /* the single outline colour for every organ contour */
+  --pil-stroke: #6b5a52;
+  --pil-unmodelled: #b3bcc6;
+
+  color: var(--text);
+  background: var(--surface-1);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.pil-figure-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  padding: var(--sp-4) var(--sp-5) var(--sp-3);
+  border-bottom: var(--border);
+}
+.pil-figure-title h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+}
+.pil-clock {
+  margin: var(--sp-1) 0 0;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+.pil-idle-note {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  max-width: 52ch;
+}
+
+.pil-figure-body {
+  display: grid;
+  grid-template-columns: minmax(300px, 480px) minmax(340px, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+  padding: var(--sp-5);
+}
+.pil-organ-figure-figure .pil-figure-body {
+  grid-template-columns: 1fr;
+  justify-items: center;
+}
+@media (max-width: 1080px) {
+  .pil-figure-body {
+    grid-template-columns: 1fr;
+  }
+}
+.pil-figure-col {
+  position: sticky;
+  top: var(--sp-3);
+  width: 100%;
+}
+.pil-panel-col {
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+
+.pil-body {
+  width: 100%;
+  height: auto;
+  max-height: 74vh;
+  display: block;
+}
+.pil-body-disqualified {
+  filter: grayscale(0.9) opacity(0.5);
+}
+
+.pil-panel {
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4);
+  min-width: 0;
+  overflow-x: auto;
+}
+.pil-panel-title {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+.pil-panel-note {
+  margin: var(--sp-1) 0 var(--sp-3);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  max-width: var(--measure);
+}
+.pil-panel svg,
+.pil-nephron,
+.pil-liver-panel,
+.pil-raas,
+.pil-resistance-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* ------------------------------------------------------------------ figure */
+
+.pil-figure {
+  transform-origin: 300px 700px;
+  transition: transform 320ms ease-out;
+}
+.pil-tilt {
+  transform: rotate(var(--pil-tilt, 0deg));
+}
+.pil-body-detail {
+  opacity: 0.55;
+}
+.pil-cough-jolt {
+  animation: pil-jolt 250ms ease-out;
+}
+@keyframes pil-jolt {
+  0% { transform: translateY(0) }
+  35% { transform: translateY(-5px) rotate(-0.6deg) }
+  100% { transform: translateY(0) }
+}
+.pil-cough-puff circle {
+  fill: var(--pil-airway);
+  opacity: 0.85;
+  animation: pil-puff 600ms ease-out;
+}
+@keyframes pil-puff {
+  from { opacity: 0; transform: translateX(-8px) }
+  to { opacity: 0.85; transform: translateX(0) }
+}
+
+/* --------------------------------------------------------------- callouts */
+
+.pil-callout-title {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 650;
+}
+.pil-callout-line {
+  fill: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.pil-leader {
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+  fill: none;
+}
+.pil-leader-dot {
+  fill: var(--line-strong);
+}
+
+/* ------------------------------------------------------------------ heart */
+
+.pil-beat {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pil-beat var(--pil-period, 0.86s) ease-in-out infinite;
+}
+@keyframes pil-beat {
+  0%, 100% { transform: scale(1) }
+  14% { transform: scale(calc(1 + var(--pil-amp, 0.05))) }
+  38% { transform: scale(calc(1 - var(--pil-amp, 0.05) * 0.4)) }
+}
+.pil-hr {
+  fill: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pil-hr-alert {
+  fill: var(--warn);
+}
+
+/* ------------------------------------------------------------------ particles */
+
+.pil-particle {
+  animation-name: pil-flow;
+  animation-duration: var(--pil-dur, 3s);
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  animation-delay: var(--pil-delay, 0s);
+  animation-direction: var(--pil-dir, normal);
+  offset-rotate: 0deg;
+  will-change: offset-distance;
+}
+@keyframes pil-flow {
+  from { offset-distance: 0%; opacity: 0 }
+  12% { opacity: 1 }
+  88% { opacity: 1 }
+  to { offset-distance: 100%; opacity: 0 }
+}
+
+/* ------------------------------------------------------------------ swell */
+
+.pil-swell {
+  transform-box: fill-box;
+  transform-origin: center top;
+  transform: scale(var(--pil-swell, 1));
+  transition: transform 600ms ease-out;
+}
+.pil-ankle { cursor: pointer }
+.pil-ankle:focus-visible { outline: 2px solid var(--focus-ring) }
+.pil-pitting { filter: saturate(1.1) }
+
+/* Motion is a signal, so when the reader has asked for less of it the figure holds a
+   representative still frame rather than simply freezing mid-transit. */
+@media (prefers-reduced-motion: reduce) {
+  .pil-particle,
+  .pil-beat,
+  .pil-cough-jolt,
+  .pil-cough-puff circle,
+  .pil-badge {
+    animation: none;
+  }
+  .pil-particle { offset-distance: 50%; opacity: 0.9 }
+  .pil-figure, .pil-swell { transition: none }
+}
+
+/* ------------------------------------------------------------------ labels */
+
+.pil-label-main {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 650;
+}
+.pil-label-sub {
+  fill: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.pil-emph { fill: var(--text); font-weight: 650 }
+.pil-small { font-size: 10.5px }
+.pil-ring-label {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pil-reactor-label {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 700;
+}
+.pil-tier-note {
+  fill: var(--text-faint);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-style: italic;
+}
+.pil-warn-text { fill: var(--bad); font-size: 12px; font-weight: 700 }
+.pil-ok-text { color: var(--text-dim) }
+p.pil-warn-text { color: var(--bad); fill: none }
+.pil-threshold-label {
+  fill: var(--bad);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* The single T1 label is visually marked, because there is exactly one of them. */
+.pil-tier-T1 .pil-label-main {
+  fill: var(--modified);
+}
+.pil-tier-T1 .pil-label-sub {
+  fill: var(--modified);
+  font-weight: 700;
+}
+.pil-t1-note {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  color: var(--text-dim);
+  border-left: 3px solid var(--modified-line);
+  background: var(--modified-wash);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: var(--sp-2) var(--sp-3);
+  max-width: var(--measure);
+}
+.pil-t1-note strong { color: var(--modified) }
+
+/* ------------------------------------------------------------------ unmodelled */
+
+.pil-unmodelled {
+  opacity: 0.4;
+}
+.pil-unmodelled * {
+  stroke-dasharray: 3 3;
+}
+
+/* ------------------------------------------------------------------ meters */
+
+.pil-meter-track { fill: var(--surface-3) }
+.pil-gauge-ref-band { fill: var(--prov-cited-line) }
+
+.pil-gauges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--sp-3);
+}
+.pil-gauge {
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-3);
+}
+.pil-gauge-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.pil-gauge-label { color: var(--text-dim) }
+.pil-gauge-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pil-gauge-bar { width: 100%; height: 16px; margin: var(--sp-2) 0 var(--sp-1) }
+.pil-gauge-scale {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+.pil-gauge-high { border-color: var(--sev-major-line); background: var(--sev-major-wash) }
+.pil-gauge-high .pil-gauge-value { color: var(--bad) }
+.pil-gauge-low { border-color: var(--accent-dim); background: var(--accent-wash) }
+.pil-gauge-low .pil-gauge-value { color: var(--accent) }
+.pil-gauge-unmodelled { opacity: 0.6 }
+
+/* ------------------------------------------------------------------ badges */
+
+.pil-badges {
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4);
+}
+.pil-badges-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: 650;
+  margin-bottom: var(--sp-3);
+}
+.pil-badges-count {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.pil-badges-empty { margin: 0; color: var(--text-dim); font-size: var(--fs-sm) }
+.pil-badge-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2) }
+.pil-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  background: var(--sev-moderate-wash);
+  border: 1px solid var(--sev-moderate-line);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--sev-moderate-fg);
+  font: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  animation: pil-badge-in 320ms ease-out;
+}
+.pil-badge:hover { border-color: var(--sev-moderate-fg) }
+@keyframes pil-badge-in {
+  from { opacity: 0; transform: translateY(3px) }
+  to { opacity: 1; transform: none }
+}
+.pil-badge-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+/* Rare events must never carry the same visual weight as common ones. */
+.pil-badge-rare {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.pil-badge-rare-tag {
+  margin-left: auto;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.pil-badge-source {
+  border-left: 2px solid var(--line-strong);
+  margin: var(--sp-2) 0 var(--sp-2) var(--sp-4);
+  padding-left: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.pil-badge-source p { margin: 2px 0 }
+.pil-badge-source strong { color: var(--text) }
+
+/* ------------------------------------------------------------------ misc */
+
+.pil-drug-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+}
+.pil-drug-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 3px 12px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  background: var(--surface-1);
+}
+.pil-drug-none {
+  border-color: var(--line) !important;
+  color: var(--text-faint);
+  font-weight: 500;
+}
+.pil-drug-swatch { width: 9px; height: 9px; border-radius: 50%; flex: none }
+.pil-drug-conc {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.pil-selectivity {
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4);
+}
+.pil-selectivity-crossed { border-color: var(--sev-major-line) }
+.pil-selectivity svg { width: 100%; height: auto; overflow: visible; margin-top: var(--sp-3) }
+.pil-selectivity p { margin: var(--sp-2) 0 0; font-size: var(--fs-sm); max-width: var(--measure) }
+
+.pil-source-details { margin-top: var(--sp-3); font-size: var(--fs-xs) }
+.pil-source-details summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+}
+.pil-source-details p { max-width: var(--measure); line-height: 1.55 }
+.pil-source { color: var(--text-faint); font-size: var(--fs-xs) }
+
+.pil-explainer {
+  background: var(--surface-1);
+  border: var(--border);
+  border-left: 3px solid var(--drug-amlodipine);
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  box-shadow: var(--shadow-sm);
+  padding: var(--sp-4);
+  font-size: var(--fs-sm);
+}
+.pil-explainer-title { margin: 0 0 var(--sp-2); font-size: var(--fs-md) }
+.pil-explainer p { margin: var(--sp-2) 0 0; max-width: var(--measure); line-height: 1.55 }
+.pil-negative-result { color: var(--sev-minor-fg) }
+.pil-positive-result { color: var(--sev-preferred-fg) }
+
+.pil-gate-banner {
+  margin: var(--sp-3) var(--sp-5) 0;
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--sev-ci-absolute-line);
+  border-left: 3px solid var(--sev-ci-absolute-fg);
+  border-radius: var(--radius);
+  background: var(--sev-ci-absolute-wash);
+  color: var(--sev-ci-absolute-fg);
+  font-size: var(--fs-sm);
+}
+
+.pil-disclaimer {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  max-width: var(--measure);
+  margin: 0;
+  border-top: var(--border);
+  padding-top: var(--sp-3);
+}
+
+/* ============================================================== the rail form
+ *
+ * `variant="rail"` is the figure as a permanent fixture of a page rather than a panel in
+ * its flow: it fills the height it is given and the drawing scales to fit, so the body is
+ * the same size as the column it lives in and not a fixed number of pixels that happens
+ * to look right on one screen. Every ancestor of the <svg> has to be a flex box with
+ * min-height:0, or the svg's intrinsic aspect ratio wins and the figure overflows.
+ */
+
+.pil-organ-figure-rail {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.pil-rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  flex-wrap: wrap;
+  padding: var(--pad-box);
+  border-bottom: var(--border);
+}
+.pil-rail-head h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+.pil-rail-status {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+}
+.pil-organ-figure-rail .pil-figure-body {
+  display: block;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: var(--pad-tight);
+}
+.pil-organ-figure-rail .pil-figure-col {
+  position: static;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+}
+.pil-organ-figure-rail .pil-body {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+.pil-rail-foot {
+  margin: 0;
+  padding: 0 var(--pad-box) var(--pad-box);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+/* ====================================================== AffectedAnatomy (aa-)
+ *
+ * The static "what does this substance touch" view. Motion here is one thing only: an
+ * organ a drug acts on breathes. Nothing else on the figure moves of its own accord.
+ */
+
+.pil-anatomy {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  min-height: 0;
+  border-radius: var(--radius-lg);
+}
+.pil-anatomy-rail {
+  height: 100%;
+}
+.aa-stage {
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+}
+.pil-anatomy-rail .aa-stage {
+  flex: 1 1 auto;
+  /* The figure never collapses to nothing, however long the mechanism list gets. */
+  min-height: 200px;
+}
+/* In a tall rail the callouts are replaced by the list below, and the list — not the
+   body — is what gives way when the rail is short. */
+.pil-anatomy-rail .aa-list {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.pil-anatomy-rail .aa-caption {
+  flex: none;
+}
+.aa-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: visible;
+}
+.pil-anatomy-inline .aa-stage {
+  flex: none;
+}
+.pil-anatomy-inline .aa-svg {
+  height: auto;
+  max-height: 62vh;
+}
+
+/* Quiet is the default state of an organ. Colour on this figure is spent only on the
+   places the drug actually reaches. */
+.aa-organ {
+  opacity: 0.4;
+  filter: saturate(0.22);
+  transition: opacity var(--dur-slow) ease, filter var(--dur-slow) ease;
+}
+.aa-organ.is-lit {
+  opacity: 1;
+  filter: none;
+}
+
+.aa-marks {
+  animation: aa-enter var(--dur-slow) var(--ease) both;
+}
+@keyframes aa-enter {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+.aa-halo {
+  fill-opacity: 0.16;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: aa-breathe 3.6s ease-in-out infinite;
+}
+/* Stagger, so several lit organs read as several organs rather than as one flash. */
+.aa-highlight:nth-of-type(2) .aa-halo { animation-delay: -0.7s }
+.aa-highlight:nth-of-type(3) .aa-halo { animation-delay: -1.4s }
+.aa-highlight:nth-of-type(4) .aa-halo { animation-delay: -2.1s }
+.aa-highlight:nth-of-type(5) .aa-halo { animation-delay: -2.8s }
+@keyframes aa-breathe {
+  0%, 100% { fill-opacity: 0.10; transform: scale(0.96) }
+  50% { fill-opacity: 0.26; transform: scale(1.05) }
+}
+.aa-ring {
+  stroke-width: 1.2;
+  stroke-opacity: 0.45;
+  stroke-dasharray: 4 5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: aa-turn 34s linear infinite;
+}
+@keyframes aa-turn {
+  to { stroke-dashoffset: -180 }
+}
+.aa-vessel {
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-opacity: 0.18;
+  animation: aa-vessel-breathe 3.6s ease-in-out infinite;
+}
+@keyframes aa-vessel-breathe {
+  0%, 100% { stroke-opacity: 0.12; stroke-width: 6 }
+  50% { stroke-opacity: 0.3; stroke-width: 9 }
+}
+
+/* --------------------------------------------------------------- aa callouts */
+
+.aa-title {
+  fill: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 650;
+}
+.aa-where {
+  fill: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 650;
+}
+.aa-what {
+  fill: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+}
+/* The single T1 row — the only named cell population in the product. */
+.aa-where.aa-t1 {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}
+.aa-mech.is-absent .aa-where,
+.aa-mech.is-absent .aa-what {
+  fill: var(--text-faint);
+  font-weight: 500;
+  font-style: italic;
+}
+.aa-callout.is-absent .aa-title {
+  fill: var(--text-dim);
+  font-weight: 500;
+}
+.aa-leader-absent {
+  stroke-dasharray: 3 4;
+  stroke: var(--line);
+}
+.aa-callout.is-absent .pil-leader-dot {
+  fill: var(--line-strong);
+}
+
+/* ------------------------------------------------------------- aa caption bar */
+
+.aa-caption {
+  display: grid;
+  gap: var(--gap-item);
+  padding: var(--pad-box);
+  border-top: var(--border);
+}
+.aa-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-item);
+  margin: 0;
+  padding: 0;
+}
+.aa-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  padding: 3px 11px;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.aa-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+}
+.aa-legend-count {
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.aa-none,
+.aa-inert,
+.aa-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-dim);
+  max-width: var(--measure);
+}
+.aa-inert {
+  color: var(--text-faint);
+}
+.aa-none strong {
+  color: var(--text);
+}
+
+/* The narrow fallback: the margin columns are gone, so the mechanisms are a list. */
+.aa-list {
+  list-style: none;
+  margin: 0;
+  padding: var(--pad-box) var(--pad-box) 0;
+  display: grid;
+  gap: var(--gap-item);
+}
+.aa-list-site {
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+.aa-list-row {
+  display: block;
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+}
+.aa-list-where {
+  font-weight: 650;
+}
+.aa-list-what {
+  color: var(--text-dim);
+}
+.aa-list-what::before {
+  content: ' — ';
+  color: var(--text-faint);
+}
+.aa-list-row.is-absent .aa-list-where,
+.aa-list-row.is-absent .aa-list-what {
+  color: var(--text-faint);
+  font-style: italic;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aa-halo,
+  .aa-ring,
+  .aa-vessel,
+  .aa-marks {
+    animation: none;
+  }
+  /* Hold the bright frame rather than the dim one: the halo is the signal. */
+  .aa-halo { fill-opacity: 0.22 }
+  .aa-vessel { stroke-opacity: 0.26 }
+  .aa-organ { transition: none }
+}

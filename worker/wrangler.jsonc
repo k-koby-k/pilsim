@@ -1,0 +1,37 @@
+{
+  // PilSim AI proxy. Deploy from THIS directory: `cd worker && npm install && npx wrangler deploy`.
+  //
+  // The browser app has no dependency on this file or on wrangler; the Worker is
+  // a separate npm project on purpose so `pnpm install` at the repo root stays
+  // exactly as it was.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "pilsim-ai",
+  "main": "index.ts",
+  "compatibility_date": "2026-08-01",
+
+  // Workers AI. `env.AI.run(...)` bills against the account's Neuron allocation;
+  // the free allocation is 10,000 Neurons/day and resets at 00:00 UTC.
+  //
+  // There is NO local simulation for Workers AI: under `wrangler dev` this
+  // binding always connects to the real service, so local development consumes
+  // the same daily allocation as production. Budget for that on demo day.
+  "ai": { "binding": "AI" },
+
+  "observability": { "enabled": true },
+
+  "vars": {
+    // Overridable without touching code. Model ids verified against the live
+    // Workers AI catalogue, 2026-08-17.
+    "WORKERS_AI_MODEL": "@cf/meta/llama-3.1-8b-instruct-fast",
+    "GEMINI_MODEL": "gemini-2.5-flash",
+
+    // Comma-separated. Leave empty for local development (any origin is
+    // reflected); set it to the demo origin before the Worker is public.
+    "ALLOWED_ORIGINS": ""
+  }
+
+  // GEMINI_API_KEY is a SECRET, never a var:
+  //   npx wrangler secret put GEMINI_API_KEY
+  // Without it the Worker still serves the workers-ai provider and answers
+  // `gemini` requests with a plain 503 rather than a silent fallback.
+}

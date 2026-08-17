@@ -1,0 +1,14 @@
+{
+  "name": "pilsim-ai-worker",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Thin streaming proxy from the PilSim browser app to Workers AI or Gemini. No pharmacology, no state.",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "wrangler": "^4.42.0"
+  }
+}

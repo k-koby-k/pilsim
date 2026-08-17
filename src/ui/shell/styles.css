@@ -1,0 +1,3536 @@
+/* ===========================================================================
+   PilSim — application stylesheet. Owned by Agent UI-A (src/ui/shell/**).
+
+   READ THIS BLOCK BEFORE STYLING ANYTHING. Other UI agents: do not invent
+   colours. Use the custom properties below so the whole product reads as one
+   piece of software.
+
+   Design intent: CLEAN CLINICAL LIGHT. A near-white ground, generous
+   whitespace, one calm blue accent, crisp typography. It should feel like
+   well-made modern medical software — calm, obvious, unintimidating — not a
+   trading terminal. Concretely:
+
+     · Whitespace and soft shadows do the work that hairline borders used to.
+       Reach for --shadow-sm/md before adding another 1px rule.
+     · Colour is reserved for meaning: severity, provenance, per-drug identity.
+       Nothing else may be saturated.
+     · No glows, neon, text-shadows or dim-on-dark tricks. Every text/surface
+       pair here clears 4.5:1 and most clear 7:1, so it survives a projector.
+     · Numbers live in --font-mono so digits align. Prose does not.
+     · Progressive disclosure over walls of data: show what matters, put the
+       rest behind an explicit affordance. Never behind a hover.
+
+   ---------------------------------------------------------------------------
+   SURFACES (ground upward)
+     --bg              page ground, behind everything
+     --surface-0       sidebar / chrome
+     --surface-1       cards, panels
+     --surface-2       raised rows, inputs, table headers
+     --surface-3       hover / selected row
+     --line            hairline border, default — use sparingly
+     --line-strong     emphasised border (selected, focused, section rule)
+
+   TEXT
+     --text            primary body text
+     --text-dim        secondary text
+     --text-faint      labels, units, metadata. Smallest acceptable contrast.
+     --text-inverse    text on a saturated accent fill
+
+   ACCENT (selection, focus, active nav, the primary action)
+     --accent          calm clinical blue
+     --accent-dim      muted blue for borders/underlines
+     --accent-wash     pale blue fill for selected rows
+     --focus-ring      use as `outline: 2px solid var(--focus-ring)`
+
+   SEVERITY LADDER — the 8 levels of SeverityId in src/types.ts, rank 0..7.
+   Each level has a foreground, a wash (translucent fill) and a border token:
+     --sev-info-*                    rank 0  grey
+     --sev-preferred-*               rank 1  green
+     --sev-compelling-*              rank 2  strong green
+     --sev-minor-*                   rank 3  yellow
+     --sev-moderate-*                rank 4  orange
+     --sev-major-*                   rank 5  red
+     --sev-ci-relative-*             rank 6  deep red, "blocks unless override"
+     --sev-ci-absolute-*             rank 7  hard red, blocks
+   ...where * is `fg`, `wash`, `line`. Prefer the <SeverityBadge> primitive
+   over touching these directly; they exist for bespoke layouts.
+
+   PROVENANCE — the three ProvenanceStatus values. Surfacing these is a
+   product feature, so they are always present — but QUIET. A reader should be
+   able to tell at a glance that sourcing exists without every row shouting.
+   Never hide them behind a hover; never let them out-shout the value itself.
+     --prov-cited-fg / -wash / -line        green   = real, sourced, quoted
+     --prov-estimated-fg / -wash / -line    amber   = assumed, note explains
+     --prov-notfound-fg / -wash / -line     grey    = searched, absent
+
+   SEMANTIC EXTRAS
+     --ok, --warn, --bad, --modified  (--modified marks a user override)
+
+   PER-DRUG IDENTITY  --drug-lisinopril, --drug-losartan, --drug-exp3174,
+     --drug-amlodipine, --drug-hydrochlorothiazide, --drug-metoprolol
+
+   TYPE
+     --font-ui         interface sans
+     --font-mono       ALL numeric values must use this. Digits must align.
+     --fs-xs .. --fs-xl, --fs-display, --lh-tight, --lh-body
+     --measure         max line length for prose. Long text must not run wide.
+
+   SPACE / GEOMETRY
+     --sp-1 (4px) .. --sp-7 (64px)   RAW SCALE — do not pick from this by eye.
+     --radius, --radius-lg, --radius-pill
+     --sidebar-w, --border (shorthand: 1px solid var(--line))
+     --shadow-sm / --shadow-md / --shadow-lg
+
+   ===========================================================================
+   THE SPACING SYSTEM — read this before you write a `gap` or a `padding`.
+   ===========================================================================
+   Three rounds of "too many gaps" feedback proved that per-component tuning
+   does not converge. So spacing is no longer a judgement call: there are FOUR
+   gap steps and THREE padding steps, and you pick one by naming the
+   RELATIONSHIP between the two things, never by eye.
+
+     --gap-tight    (4px)   parts of ONE thing
+                            label → its value, value → its unit, chip row
+     --gap-item     (10px)  siblings inside ONE group
+                            rows of a list, cards in a grid, buttons in a bar
+     --gap-group    (16px)  groups inside one section
+                            the blocks of a card body, form field → form field
+     --gap-section  (26px)  sections of a page
+                            card → card, band → band, page head → page body
+
+     --pad-tight    (8px)   table cells, dense rows
+     --pad-box      (16px)  card / panel / disclosure interior — THE DEFAULT
+     --pad-lg       (22px)  interior of a full-width library card
+     --pad-page     (24px)  page gutters
+
+   Rules:
+     · A container sets ONE gap. If two children inside it need different
+       gaps, they belong in different groups — fix the structure, not the gap.
+     · Never write a bare px value or reach into --sp-* for vertical rhythm.
+       --sp-* survives only for one-off horizontal nudges and legacy rules.
+     · If nothing on the scale fits, the layout is wrong, not the scale.
+
+   ===========================================================================
+   SHARED FORM PRIMITIVES — src/ui/shell/fields.tsx
+   ===========================================================================
+   Native number spinners are banned product-wide: they are the single most
+   unpolished thing on screen. Import these instead of hand-rolling an input.
+
+     <NumberField value onChange unit min max step align width tone ariaLabel>
+        .num-field   Compact bordered field, tabular mono digits, right
+                     aligned, unit set INSIDE the field. Spinners suppressed.
+                     Use when an exact value matters or the range is open.
+     <SliderField label value onChange min max step unit band hint tone>
+        .slider      Track + thumb + a NumberField readout. Use when the range
+                     is bounded and meaningful (a dose inside its approved
+                     range, a fraction, a weight). `band` paints the sourced
+                     safe range on the track. NEVER put a slider on an
+                     unbounded value.
+     <Segmented options value onChange size>
+        .seg         Compact exclusive choice, 2–4 options. Phenotype, role,
+                     units. Not for more than four.
+     <TextField value onChange placeholder>       .text-field
+     <FieldShell label hint control right>        .field  — the label + control
+                     wrapper that gives every form the same rhythm.
+
+   Every control is --control-h tall so a row of mixed controls lines up.
+
+   ===========================================================================
+   THE LAYOUT LAW — three zones, one column, one card per row.
+   ===========================================================================
+   A page has THREE zones and no more: the navigation rail on the left, ONE
+   column of content in the centre, and the anatomy rail on the right. Nothing
+   else may compete for horizontal space.
+
+   In the centre column, CARDS STACK ONE PER ROW. Never two across, never
+   three. `LibraryGrid` is a single-column stack — vertical scrolling is fine
+   and expected, horizontal scanning is what exhausts a reader. Because each
+   card now owns the full width, cards are LARGER: --pad-lg interiors,
+   --fs-lg titles, name on the left and its numbers on the same line to the
+   right rather than crammed into a narrow tile.
+
+   Multi-column layout is allowed in exactly one place: FIELDS INSIDE a single
+   card (.keygrid). Two fields side by side inside one card is not two cards.
+
+   A long single column makes filtering matter more, not less, so the search
+   bar sticks to the top of the column: .lib-bar--sticky.
+
+     .page-split    centre column + a fixed right rail (grid)
+     .page-col      the centre column itself
+     .rail          sticky right column; it stays while the centre scrolls
+   Substances, Pills and Test subjects all use this so the three pages read as
+   one product. The rail hosts <AnatomyRail> (src/ui/shell/AnatomyRail.tsx),
+   a tolerant wrapper around `AffectedAnatomy` from src/ui/organs.
+
+   ===========================================================================
+   MOTION
+   ===========================================================================
+   Motion explains, it never decorates. Three durations only:
+     --dur-fast (120ms) hover/state, --dur (180ms) enter/exit,
+     --dur-slow (320ms) a value changing under the reader's eye.
+   Everything is disabled under prefers-reduced-motion at the foot of this
+   file. Nothing bounces, nothing spins.
+
+   ---------------------------------------------------------------------------
+   SHARED PRIMITIVES live in src/ui/shell/primitives.tsx and are free for any
+   UI agent to import:
+
+     <LibraryGrid> + <LibraryCard title subtitle glyph tags stats
+       meta status tone selected onClick>                      .lib-card
+       ^ THE HOUSE PATTERN. Every "choose one of these" screen — pills,
+         substances, test subjects — is a grid of these. Name, one plain
+         phrase, at most three numbers; depth lives behind the card.
+     <Card title subtitle actions tone selected onClick>       .card
+     <Row label hint mono wide>value</Row>                     .row
+     <SeverityBadge severity>                                  .sev-badge
+     <ProvenanceChip provenance onClick>                       .prov-chip
+     <ProvenanceDetail provenance>                             .prov-detail
+     <Badge tone>                                              .badge
+     <Section title actions>                                   .section
+     <StatusBlock kind message>   kind: loading | error | empty
+     <SearchInput value onChange placeholder count>            .search
+     <Disclosure summary meta>                                 .disclosure
+
+   A shared data hook lives in src/data/DataProvider.tsx:
+     useData() -> { substances, products, rules, patientModel, loading,
+                    error, reload }
+   =========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* ---------------------------------------------------------------------
+     PilSim palette — clean clinical light.
+     Calm by default. Colour is reserved for meaning: severity, provenance,
+     and per-drug identity. Nothing else is allowed to be saturated.
+     Token NAMES are stable; only their values changed in the redesign, so
+     every component inherits the new look without edits.
+     --------------------------------------------------------------------- */
+
+  /* surfaces — near-white ground, barely-there elevation */
+  --bg: #f7f8fa;
+  --surface-0: #ffffff;
+  --surface-1: #ffffff;
+  --surface-2: #f4f6f9;
+  --surface-3: #eaeff5;
+  --line: #e3e8ef;
+  --line-strong: #cbd4e0;
+
+  /* text — near-black, not pure black; comfortable at length */
+  --text: #16202b;
+  --text-dim: #5a6774;
+  --text-faint: #8a95a3;
+  --text-inverse: #ffffff;
+
+  /* accent — one calm clinical blue, used sparingly */
+  --accent: #2563c9;
+  --accent-dim: #9db8e4;
+  --accent-wash: #eaf1fc;
+  --focus-ring: #2563c9;
+
+  /* severity ladder, rank 0..7 — muted, readable, never neon */
+  --sev-info-fg: #5a6774;
+  --sev-info-wash: #f1f3f6;
+  --sev-info-line: #dde2e9;
+
+  --sev-preferred-fg: #17734a;
+  --sev-preferred-wash: #e8f6ee;
+  --sev-preferred-line: #bfe3ce;
+
+  --sev-compelling-fg: #0f5f3d;
+  --sev-compelling-wash: #dff2e6;
+  --sev-compelling-line: #a8d8bd;
+
+  --sev-minor-fg: #8a6410;
+  --sev-minor-wash: #fdf5e3;
+  --sev-minor-line: #ecdcb4;
+
+  --sev-moderate-fg: #a35410;
+  --sev-moderate-wash: #fdf0e4;
+  --sev-moderate-line: #f0d6ba;
+
+  --sev-major-fg: #b3261e;
+  --sev-major-wash: #fdecea;
+  --sev-major-line: #f4c9c5;
+
+  --sev-ci-relative-fg: #98202b;
+  --sev-ci-relative-wash: #fce9eb;
+  --sev-ci-relative-line: #f0c2c7;
+
+  --sev-ci-absolute-fg: #8a1220;
+  --sev-ci-absolute-wash: #fbe2e5;
+  --sev-ci-absolute-line: #e39aa3;
+
+  /* provenance — quiet by default; this is metadata, not the message */
+  --prov-cited-fg: #17734a;
+  --prov-cited-wash: #eaf6f0;
+  --prov-cited-line: #c8e5d5;
+
+  --prov-estimated-fg: #8a6410;
+  --prov-estimated-wash: #fdf6e6;
+  --prov-estimated-line: #ecddb9;
+
+  --prov-notfound-fg: #8a95a3;
+  --prov-notfound-wash: #f4f6f9;
+  --prov-notfound-line: #e0e5ec;
+
+  /* semantic */
+  --ok: #17734a;
+  --warn: #a35410;
+  --bad: #b3261e;
+  --modified: #6b3fb5;
+  --modified-wash: #f2ecfb;
+  --modified-line: #d9c9f0;
+
+  /* per-drug identity hues — for charts and organ tinting */
+  --drug-lisinopril: #2563c9;
+  --drug-losartan: #0f8a8a;
+  --drug-exp3174: #0b6b6b;
+  --drug-amlodipine: #b3591e;
+  --drug-hydrochlorothiazide: #6b3fb5;
+  --drug-metoprolol: #b3264f;
+
+  /* type — larger and calmer than the previous build */
+  --font-ui: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, 'JetBrains Mono',
+    'Roboto Mono', Menlo, Consolas, monospace;
+  --fs-xs: 12px;
+  --fs-sm: 13.5px;
+  --fs-md: 15px;
+  --fs-lg: 19px;
+  --fs-xl: 26px;
+  --fs-display: 34px;
+  --lh-tight: 1.3;
+  --lh-body: 1.6;
+
+  /* -----------------------------------------------------------------
+     THE SPACING SYSTEM. Four gaps, three paddings, chosen by relationship.
+     See the block at the top of this file. Use these, not --sp-*.
+     ----------------------------------------------------------------- */
+  --gap-tight: 4px; /* parts of one thing */
+  --gap-item: 10px; /* siblings in one group */
+  --gap-group: 16px; /* groups inside a section */
+  --gap-section: 26px; /* sections of a page */
+
+  --pad-tight: 8px; /* dense rows, table cells */
+  --pad-box: 16px; /* card / panel interior — the default */
+  --pad-lg: 22px; /* full-width library card interior */
+  --pad-page: 24px; /* page gutters */
+
+  /* controls — one height so a row of mixed controls lines up */
+  --control-h: 30px;
+  --control-h-lg: 36px;
+  --field-w: 92px;
+
+  /* motion — three durations, nothing else */
+  --dur-fast: 120ms;
+  --dur: 180ms;
+  --dur-slow: 320ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+
+  /* raw scale — legacy. Do not pick from this for vertical rhythm. */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 14px;
+  --sp-4: 20px;
+  --sp-5: 28px;
+  --sp-6: 40px;
+  --sp-7: 64px;
+
+  /* geometry — soft, modern, not sharp-cornered terminal */
+  --radius: 8px;
+  --radius-lg: 14px;
+  --radius-pill: 999px;
+  --sidebar-w: 248px;
+  --border: 1px solid var(--line);
+
+  /* elevation — shadows do the work borders used to */
+  --shadow-sm: 0 1px 2px rgba(20, 32, 45, 0.06);
+  --shadow-md: 0 2px 8px rgba(20, 32, 45, 0.07), 0 1px 2px rgba(20, 32, 45, 0.05);
+  --shadow-lg: 0 8px 28px rgba(20, 32, 45, 0.10), 0 2px 6px rgba(20, 32, 45, 0.05);
+
+  /* content measure — long text must not run the full width */
+  --measure: 68ch;
+}
+
+
+/* --------------------------------------------------------------------- reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 600;
+  line-height: var(--lh-tight);
+  letter-spacing: -0.01em;
+}
+
+p {
+  margin: 0 0 var(--sp-3);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-dim);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+::selection {
+  background: var(--accent-wash);
+  color: var(--text);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border: 4px solid transparent;
+  background-clip: content-box;
+  border-radius: var(--radius-pill);
+}
+
+/* ------------------------------------------------------------------ app shell */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.app-main {
+  min-width: 0;
+  overflow: auto;
+  background: var(--bg);
+}
+
+/* --------------------------------------------------------------------- sidebar */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface-0);
+  border-right: var(--border);
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-5) var(--sp-4) var(--sp-4);
+}
+
+.sidebar-mark {
+  flex: none;
+}
+
+.sidebar-wordmark {
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+}
+
+.sidebar-tagline {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.35;
+}
+
+.sidebar-nav {
+  padding: 0 var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 10px var(--sp-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.nav-item[aria-current='page'] {
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.nav-item .nav-icon {
+  display: block;
+  color: currentColor;
+}
+
+.sidebar-section {
+  padding: var(--sp-5) var(--sp-4) var(--sp-2);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.sidebar-saved {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 var(--sp-3) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.saved-item {
+  display: grid;
+  grid-template-columns: 7px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  padding: 8px var(--sp-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.saved-item:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.saved-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+.saved-item .saved-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* History rows carry two lines — what ran, and when with what it found — so
+   they override the single-line saved-item grid rather than truncating the
+   second line away. */
+.history-item {
+  grid-template-columns: 7px minmax(0, 1fr);
+  align-items: start;
+  padding-top: 9px;
+  padding-bottom: 9px;
+}
+.history-dot {
+  margin-top: 6px;
+  background: var(--accent-dim);
+}
+.history-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.history-item-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidebar-clear {
+  align-self: flex-start;
+  margin: var(--gap-tight) var(--sp-3) 0;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-faint);
+  cursor: pointer;
+}
+.sidebar-clear:hover {
+  color: var(--text-dim);
+  text-decoration: underline;
+}
+
+.sidebar-empty {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------- settings */
+
+.sidebar-settings {
+  position: relative;
+  padding: 0 var(--sp-3);
+  margin-top: var(--sp-2);
+  border-top: var(--border);
+}
+
+.sidebar-settings-btn {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+  width: 100%;
+  margin-top: var(--sp-2);
+  padding: 10px var(--sp-3);
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.sidebar-settings-btn:hover,
+.sidebar-settings-btn[aria-expanded='true'] {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sidebar-settings-btn .nav-icon {
+  display: block;
+  color: currentColor;
+}
+
+.sidebar-settings-panel {
+  position: absolute;
+  left: var(--sp-3);
+  right: var(--sp-3);
+  bottom: 100%;
+  margin-bottom: 6px;
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-4);
+  z-index: 20;
+}
+.sidebar-settings-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+.sidebar-settings-label {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-dim);
+}
+
+.sidebar-foot {
+  padding: var(--sp-4);
+  border-top: var(--border);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.sidebar-foot strong {
+  display: block;
+  color: var(--text-dim);
+  font-weight: 650;
+}
+
+/* ----------------------------------------------------------------- page frame */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+}
+
+.page-head {
+  padding: var(--gap-section) var(--pad-page) var(--gap-group);
+  background: var(--bg);
+}
+
+.page-eyebrow {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: var(--sp-2);
+}
+
+.page-title {
+  font-size: var(--fs-xl);
+}
+
+.page-sub {
+  margin: var(--gap-tight) 0 0;
+  max-width: var(--measure);
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.page-body {
+  flex: 1 1 auto;
+  padding: 0 var(--pad-page) var(--gap-section);
+}
+
+/* the "what to do next" strip every page ends with — one line, not a panel */
+.next-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item);
+  margin-top: var(--gap-section);
+  padding: var(--pad-tight) var(--pad-box);
+  background: var(--accent-wash);
+  border-radius: var(--radius);
+}
+
+.next-step-text {
+  flex: 1 1 240px;
+  min-width: 0;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.next-step-text b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* --------------------------------------------------------------- primitives */
+
+.card {
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.card--interactive {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: box-shadow 120ms ease, transform 120ms ease;
+}
+
+.card--interactive:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card--selected {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
+}
+
+.card--danger {
+  box-shadow: inset 3px 0 0 var(--sev-ci-absolute-fg), var(--shadow-sm);
+}
+.card--warn {
+  box-shadow: inset 3px 0 0 var(--sev-moderate-fg), var(--shadow-sm);
+}
+.card--good {
+  box-shadow: inset 3px 0 0 var(--sev-preferred-line), var(--shadow-sm);
+}
+
+.card--selected.card--danger,
+.card--selected.card--warn,
+.card--selected.card--good {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
+}
+
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  padding: var(--pad-box) var(--pad-box) 0;
+}
+
+.card-head + .card-body--flush {
+  margin-top: var(--gap-group);
+}
+
+.card-title {
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+
+.card-sub {
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.5;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex: none;
+  flex-wrap: wrap;
+}
+
+.card-body {
+  padding: var(--pad-box);
+  min-width: 0;
+}
+
+.card-body--flush {
+  padding: 0;
+}
+
+/* a flush table must clip to the card's corners rather than square them off */
+.card-body--flush:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  overflow: hidden;
+}
+
+/* labelled row */
+.row {
+  display: grid;
+  grid-template-columns: minmax(140px, 34%) minmax(0, 1fr);
+  gap: var(--gap-group);
+  padding: var(--gap-tight) 0;
+  font-size: var(--fs-sm);
+  align-items: baseline;
+}
+
+.row--wide {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.row-label {
+  color: var(--text-faint);
+}
+
+.row-hint {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.row-value {
+  color: var(--text);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.row-value--mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.badge--accent {
+  color: var(--accent);
+  background: var(--accent-wash);
+}
+.badge--ok {
+  color: var(--ok);
+  background: var(--prov-cited-wash);
+}
+.badge--warn {
+  color: var(--warn);
+  background: var(--prov-estimated-wash);
+}
+.badge--bad {
+  color: var(--bad);
+  background: var(--sev-major-wash);
+}
+.badge--modified {
+  color: var(--modified);
+  background: var(--modified-wash);
+}
+
+/* severity badge — one class per rank */
+.sev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.sev-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.sev-rank {
+  font-family: var(--font-mono);
+  opacity: 0.6;
+}
+
+.sev-info {
+  color: var(--sev-info-fg);
+  background: var(--sev-info-wash);
+}
+.sev-preferred {
+  color: var(--sev-preferred-fg);
+  background: var(--sev-preferred-wash);
+}
+.sev-compelling {
+  color: var(--sev-compelling-fg);
+  background: var(--sev-compelling-wash);
+}
+.sev-minor {
+  color: var(--sev-minor-fg);
+  background: var(--sev-minor-wash);
+}
+.sev-moderate {
+  color: var(--sev-moderate-fg);
+  background: var(--sev-moderate-wash);
+}
+.sev-major {
+  color: var(--sev-major-fg);
+  background: var(--sev-major-wash);
+}
+.sev-contraindicated_relative {
+  color: var(--sev-ci-relative-fg);
+  background: var(--sev-ci-relative-wash);
+}
+.sev-contraindicated_absolute {
+  color: var(--sev-ci-absolute-fg);
+  background: var(--sev-ci-absolute-wash);
+}
+
+/* provenance chip — deliberately quiet: a dot, a short word, no border.
+   Present on every value, loud on none. */
+.prov-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  white-space: nowrap;
+  color: var(--text-faint);
+  cursor: default;
+}
+
+button.prov-chip {
+  cursor: pointer;
+  border-radius: var(--radius);
+  padding: 1px 6px;
+}
+
+button.prov-chip:hover {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.prov-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: currentColor;
+}
+
+.prov-tier {
+  opacity: 0.65;
+  font-family: var(--font-mono);
+}
+
+.prov-CITED::before {
+  background: var(--prov-cited-fg);
+}
+.prov-ESTIMATED::before {
+  background: var(--prov-estimated-fg);
+}
+/* not-found reads as a hollow dot — absence, drawn as absence */
+.prov-NOT_FOUND::before {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--text-faint);
+}
+
+/* …but when a chip is spelled out in a detail panel it may carry its colour */
+.prov-chip--full.prov-CITED {
+  color: var(--prov-cited-fg);
+}
+.prov-chip--full.prov-ESTIMATED {
+  color: var(--prov-estimated-fg);
+}
+.prov-chip--full.prov-NOT_FOUND {
+  color: var(--text-dim);
+}
+
+.prov-detail {
+  margin-top: var(--gap-item);
+  padding: var(--pad-box);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--text-dim);
+  display: grid;
+  gap: var(--gap-item);
+}
+
+.prov-detail-line {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: baseline;
+}
+
+.prov-detail-key {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+
+.prov-detail-val {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prov-quote {
+  border-left: 2px solid var(--prov-cited-line);
+  padding-left: var(--sp-3);
+  color: var(--text);
+}
+
+.prov-detail--ESTIMATED .prov-quote {
+  border-left-color: var(--prov-estimated-line);
+}
+.prov-detail--NOT_FOUND .prov-quote {
+  border-left-color: var(--prov-notfound-line);
+}
+
+/* section */
+.section {
+  margin-bottom: var(--gap-section);
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  margin-bottom: var(--gap-item);
+}
+
+.section-title {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  color: var(--text);
+}
+
+/* status blocks */
+.status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.status-title {
+  font-size: var(--fs-md);
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.status--error .status-title {
+  color: var(--bad);
+}
+
+.status-msg {
+  max-width: 60ch;
+  line-height: var(--lh-body);
+}
+
+.spinner {
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 3s;
+  }
+  .card--interactive {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------- controls */
+
+.search {
+  position: relative;
+  display: block;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px var(--sp-4) 10px 36px;
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  box-shadow: var(--shadow-sm);
+}
+
+.search input::placeholder {
+  color: var(--text-faint);
+}
+
+.search input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.search-icon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.search-count {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 9px var(--sp-4);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-1);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+  filter: brightness(0.92);
+}
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  background: var(--accent-wash);
+  border-color: transparent;
+  color: var(--accent);
+}
+
+.btn--danger {
+  color: var(--bad);
+  border-color: var(--sev-major-line);
+  background: var(--sev-major-wash);
+}
+
+.btn--sm {
+  padding: 5px var(--sp-3);
+  font-size: var(--fs-xs);
+}
+
+.btn--lg {
+  padding: 12px var(--sp-5);
+  font-size: var(--fs-md);
+}
+
+/* Native number spinners are banned product-wide — they are the least
+   polished thing on any screen. Use <NumberField> or <SliderField>. */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.input,
+select.input,
+textarea.input {
+  width: 100%;
+  padding: 9px var(--sp-3);
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+select.input {
+  font-family: var(--font-ui);
+}
+
+.toggle-group {
+  display: inline-flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  padding: 3px;
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+}
+
+.toggle {
+  padding: 5px var(--sp-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  color: var(--text);
+}
+
+.toggle[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+}
+
+.toggle[aria-pressed='true'].toggle--CITED {
+  color: var(--prov-cited-fg);
+}
+.toggle[aria-pressed='true'].toggle--ESTIMATED {
+  color: var(--prov-estimated-fg);
+}
+.toggle[aria-pressed='true'].toggle--NOT_FOUND {
+  color: var(--text-dim);
+}
+
+/* ------------------------------------------------------- disclosure primitive */
+
+.disclosure {
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.disclosure-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-item);
+  width: 100%;
+  padding: var(--pad-tight) var(--pad-box);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.disclosure-btn:hover {
+  background: var(--surface-2);
+}
+
+.disclosure-chevron {
+  flex: none;
+  color: var(--text-faint);
+  transition: transform 140ms ease;
+}
+
+.disclosure-btn[aria-expanded='true'] .disclosure-chevron {
+  transform: rotate(90deg);
+}
+
+.disclosure-meta {
+  margin-left: auto;
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.disclosure-panel {
+  padding: 0 var(--pad-box) var(--pad-box);
+}
+
+.disclosure-panel--flush {
+  padding: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .disclosure-chevron {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------------ home page */
+
+/* Deliberately short: a sentence, the action, the four steps, one honest line.
+   Everything else is one click away. A first-time viewer should take this in
+   without scrolling. */
+
+.home {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5) var(--sp-6);
+  width: 100%;
+}
+
+.home-title {
+  font-size: var(--fs-display);
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  max-width: 20ch;
+}
+
+.home-lede {
+  margin-top: var(--sp-3);
+  max-width: var(--measure);
+  font-size: var(--fs-md);
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+
+.home-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+
+.home-facts {
+  margin-top: var(--sp-3);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.home-facts b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--text-dim);
+}
+
+.home-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+}
+
+.home-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow 120ms ease;
+}
+
+.home-step:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.home-step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.home-step-title {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.home-step-text {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.home-foot {
+  margin-top: var(--sp-5);
+}
+
+.home-foot-line {
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.home-foot-line b {
+  color: var(--sev-moderate-fg);
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------- substances page */
+
+.subs-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  min-width: 0;
+}
+
+.subs-headline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item);
+}
+
+.subs-headline h2 {
+  font-size: var(--fs-lg);
+}
+
+.subs-class {
+  margin: var(--sp-1) 0 0;
+  max-width: var(--measure);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.subs-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* the small "sourcing" summary that replaces the shouting ledger */
+.subs-sourcing {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item) var(--gap-group);
+  padding: var(--pad-tight) var(--pad-box);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+/* key-parameter grid — the small number of values that actually matter */
+.keygrid {
+  display: grid;
+  /* the ONE place multi-column is allowed: fields inside a single card, and
+     never more than two across. Two fields side by side are not two cards. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--gap-group) var(--gap-section);
+}
+
+@media (max-width: 860px) {
+  .keygrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.keyrow {
+  min-width: 0;
+}
+
+.keyrow-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.keyrow-main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin-top: 3px;
+}
+
+.keyrow-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg);
+  font-weight: 550;
+  color: var(--text);
+}
+
+.keyrow-input {
+  width: 7ch;
+  min-width: 0;
+  padding: 2px 6px;
+  margin: -2px 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg);
+  font-weight: 550;
+}
+
+.keyrow-input:hover {
+  border-color: var(--line);
+  background: var(--surface-2);
+}
+
+.keyrow-input:focus {
+  border-color: var(--accent);
+  background: var(--surface-1);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.keyrow-unit {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.keyrow-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: 3px;
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.keyrow--modified .keyrow-value,
+.keyrow--modified .keyrow-input {
+  color: var(--modified);
+}
+
+.keyrow-empty {
+  font-size: var(--fs-lg);
+  color: var(--text-faint);
+}
+
+/* the full parameter table, behind the "All parameters" disclosure */
+.mtable {
+  display: flex;
+  flex-direction: column;
+}
+
+.mtable-head,
+.mrow-grid {
+  display: grid;
+  grid-template-columns: minmax(160px, 1.7fr) 120px minmax(110px, 1fr) 148px 32px;
+  gap: var(--gap-item);
+  align-items: center;
+}
+
+.mtable-head {
+  padding: var(--pad-tight) var(--pad-box);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--text-faint);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.mrow + .mrow {
+  border-top: var(--border);
+}
+
+.mrow-grid {
+  padding: var(--pad-tight) var(--pad-box);
+}
+
+.mrow:hover {
+  background: var(--surface-2);
+}
+
+.mrow--modified {
+  background: var(--modified-wash);
+  box-shadow: inset 3px 0 0 var(--modified);
+}
+
+.mrow-name {
+  min-width: 0;
+  font-size: var(--fs-sm);
+  overflow-wrap: anywhere;
+}
+
+.mrow-path {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mrow-unit {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mrow-spread {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.mrow-input {
+  padding: 5px var(--sp-2);
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  width: 100%;
+  text-align: right;
+}
+
+.mrow-input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.mrow--modified .mrow-input {
+  border-color: var(--modified-line);
+  color: var(--modified);
+}
+
+.mrow-input--null::placeholder {
+  color: var(--text-faint);
+}
+
+.mrow-expand {
+  border: 0;
+  background: transparent;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: var(--radius);
+}
+
+.mrow-expand:hover {
+  color: var(--accent);
+  background: var(--surface-3);
+}
+
+.mrow-drawer {
+  padding: 0 var(--pad-box) var(--pad-tight);
+}
+
+.mrow-text {
+  padding: 0 var(--pad-box) var(--pad-tight);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.mtable-empty {
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-faint);
+  font-size: var(--fs-sm);
+}
+
+.mtable-section {
+  padding: var(--gap-group) var(--pad-box) var(--pad-tight);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.mtable-section span {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-item);
+  align-items: center;
+}
+
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0 var(--gap-section);
+}
+
+/* one catalogue hit — a row, not a card: the catalogue is scanned, not browsed */
+.result-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-item);
+  padding: var(--pad-tight) var(--pad-lg);
+  transition: background-color var(--dur-fast) ease;
+}
+
+.result-row + .result-row {
+  border-top: var(--border);
+}
+
+.result-row:hover {
+  background: var(--surface-2);
+}
+
+.result-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap-tight) var(--gap-item);
+  min-width: 0;
+  padding: var(--gap-tight) 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result-name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.result-kind {
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.mtable-more {
+  padding: var(--pad-tight) var(--pad-lg) var(--pad-box);
+}
+
+/* provenance ledger bar — used in the sourcing summary, kept slim */
+.prov-bar {
+  display: flex;
+  height: 6px;
+  min-width: 160px;
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+  background: var(--surface-3);
+}
+
+.prov-bar-seg {
+  height: 100%;
+}
+
+.prov-bar-seg--CITED {
+  background: var(--prov-cited-fg);
+}
+.prov-bar-seg--ESTIMATED {
+  background: var(--prov-estimated-fg);
+}
+.prov-bar-seg--NOT_FOUND {
+  background: var(--line-strong);
+}
+
+.prov-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.prov-legend b {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  font-weight: 650;
+}
+
+/* ------------------------------------------------------------- pills page */
+
+.lib-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+/* search + filters + the one primary action, above a library grid */
+.lib-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item);
+}
+
+/* a long single column makes filtering matter more, so it stays reachable */
+.lib-bar--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: var(--gap-item) 0;
+  margin-top: calc(var(--gap-item) * -1);
+  background: var(--bg);
+}
+
+.lib-bar .search {
+  flex: 1 1 260px;
+  max-width: 380px;
+}
+
+/* ------------------------------------------------- shared library card grid
+   One pattern for every "choose one of these" screen: pills, substances, test
+   subjects. See src/ui/shell/LibraryCard.tsx. */
+
+.lib-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+}
+
+.lib-section {
+  margin-top: var(--gap-section);
+}
+
+.lib-section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  margin-bottom: var(--gap-item);
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.lib-section-head span {
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.lib-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+  width: 100%;
+  min-width: 0;
+  padding: var(--pad-lg);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+
+.lib-card--interactive {
+  cursor: pointer;
+  transition: box-shadow 120ms ease;
+}
+
+.lib-card--interactive:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.lib-card--selected {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
+}
+
+.lib-card--danger {
+  box-shadow: inset 3px 0 0 var(--sev-ci-absolute-fg), var(--shadow-sm);
+}
+.lib-card--warn {
+  box-shadow: inset 3px 0 0 var(--sev-moderate-fg), var(--shadow-sm);
+}
+.lib-card--good {
+  box-shadow: inset 3px 0 0 var(--sev-preferred-line), var(--shadow-sm);
+}
+
+.lib-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap-item) var(--gap-section);
+}
+
+.lib-card-id {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  min-width: 220px;
+}
+
+.lib-glyph {
+  flex: none;
+  margin-top: 3px;
+  line-height: 0;
+}
+
+.lib-title {
+  display: block;
+  font-size: var(--fs-lg);
+  font-weight: 640;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.lib-sub {
+  display: block;
+  max-width: var(--measure);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  color: var(--text-dim);
+}
+
+.lib-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight) var(--gap-item);
+}
+
+.lib-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--gap-item) var(--gap-section);
+  margin-left: auto;
+}
+
+.lib-stat {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lib-stat-label {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.lib-stat-value {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-lg);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.lib-stat-unit {
+  margin-left: 3px;
+  font-size: var(--fs-xs);
+  font-weight: 400;
+  color: var(--text-faint);
+}
+
+.lib-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  padding-top: var(--gap-item);
+  border-top: var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.lib-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lib-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lib-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  flex: none;
+}
+
+/* -------------------------------------------------------- pickable library cards
+   Two actions on one card: a tick box that gathers it into a selection, and the
+   rest of the card body which still opens the detail view. See the doc comment on
+   LibraryCard for why these are deliberately different shapes. */
+
+.lib-card--pickable {
+  flex-direction: row;
+  align-items: stretch;
+}
+
+.lib-card--picked {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm);
+}
+
+.lib-card--picked.lib-card--interactive:hover {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
+}
+
+.lib-pick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  width: 68px;
+  padding: var(--gap-tight);
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--dur-fast) ease, color var(--dur-fast) ease,
+    border-color var(--dur-fast) ease;
+}
+
+.lib-pick:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.lib-card--picked .lib-pick {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.lib-pick-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1.5px solid currentColor;
+  color: transparent;
+}
+
+.lib-card--picked .lib-pick-box {
+  color: currentColor;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.lib-pick-text {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.lib-card-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lib-card-open--static {
+  cursor: default;
+}
+
+.lib-open-hint {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------- multi-substance selection
+   Appears once anything is ticked on the Substances page. See PickTray in
+   SubstancesPage.tsx. */
+
+.pick-tray {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-sm);
+}
+
+.pick-tray-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-group);
+}
+
+.pick-tray-title {
+  font-size: var(--fs-md);
+  font-weight: 650;
+  margin-bottom: var(--gap-tight);
+}
+
+.pick-tray-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-tight);
+}
+
+.pick-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+
+.pick-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pick-chip button:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.pick-tray-check {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+  margin-top: var(--gap-group);
+  padding-top: var(--gap-group);
+  border-top: var(--border);
+}
+
+/* pick control on a compact catalogue result row */
+.result-pick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1.5px solid var(--line);
+  border-radius: 5px;
+  background: var(--surface-1);
+  color: transparent;
+  cursor: pointer;
+}
+
+.result-pick:hover {
+  border-color: var(--accent);
+}
+
+.result-pick--picked {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--text-inverse);
+}
+
+.result-pick-box {
+  display: flex;
+  line-height: 0;
+}
+
+/* focused single-task views: pill detail, composer */
+.pill-focus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+.pill-focus-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-item);
+}
+
+.pill-focus-title {
+  font-size: var(--fs-lg);
+  font-weight: 620;
+}
+
+.pill-focus-sub {
+  margin-top: 3px;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+/* the law: one card per row. This was a two-up split; it stacks now. */
+.pill-two {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+.excipient-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.excipient-table th {
+  text-align: left;
+  padding: var(--pad-tight) var(--pad-box);
+  background: var(--surface-2);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--text-faint);
+  position: sticky;
+  top: 0;
+}
+
+.excipient-table td {
+  padding: var(--pad-tight) var(--pad-box);
+  border-top: var(--border);
+  vertical-align: middle;
+}
+
+.excipient-table td.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.excipient-table tr.is-active td {
+  background: var(--accent-wash);
+}
+
+.scroll-y {
+  max-height: 360px;
+  overflow: auto;
+}
+
+/* composer */
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+/* one component of a composition: what it is, then its dose under it */
+.composer-block {
+  padding: var(--gap-item) 0;
+}
+
+.composer-block + .composer-block {
+  border-top: var(--border);
+}
+
+.composer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px 30px;
+  gap: var(--gap-item);
+  align-items: center;
+}
+
+.composer-dose {
+  max-width: 420px;
+  margin-top: var(--gap-item);
+}
+
+/* an adjustable dose, in the opened pill */
+.dose-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.dose-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 340px);
+  gap: var(--gap-group);
+  align-items: center;
+  padding: var(--gap-item) 0;
+}
+
+.dose-row + .dose-row {
+  border-top: var(--border);
+}
+
+.dose-row--modified {
+  box-shadow: inset 3px 0 0 var(--modified);
+  padding-left: var(--gap-item);
+}
+
+.dose-id {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+
+.dose-name {
+  font-size: var(--fs-md);
+  font-weight: 600;
+}
+
+.dose-source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-tight) var(--gap-item);
+  font-size: var(--fs-xs);
+}
+
+@media (max-width: 720px) {
+  .dose-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.composer-head {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  color: var(--text-faint);
+}
+
+.composer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item);
+  padding-top: var(--gap-tight);
+}
+
+.composer-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gap-item);
+}
+
+.icon-btn {
+  border: var(--border);
+  background: var(--surface-1);
+  color: var(--text-faint);
+  border-radius: var(--radius);
+  cursor: pointer;
+  padding: 6px 9px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+  line-height: 1;
+}
+
+.icon-btn:hover {
+  color: var(--bad);
+  border-color: var(--sev-major-line);
+  background: var(--sev-major-wash);
+}
+
+/* rule findings */
+.findings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+}
+
+.finding {
+  border-left: 3px solid var(--line-strong);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--surface-2);
+  padding: var(--pad-box);
+}
+
+.finding-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  margin-bottom: var(--gap-tight);
+}
+
+.finding-title {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text);
+}
+
+.finding-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.finding-short {
+  margin-top: 2px;
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+
+.finding-mech {
+  margin-top: var(--sp-2);
+  max-width: var(--measure);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.6;
+}
+
+.finding--info {
+  border-left-color: var(--sev-info-line);
+}
+.finding--preferred {
+  border-left-color: var(--sev-preferred-fg);
+}
+.finding--compelling {
+  border-left-color: var(--sev-compelling-fg);
+}
+.finding--minor {
+  border-left-color: var(--sev-minor-fg);
+}
+.finding--moderate {
+  border-left-color: var(--sev-moderate-fg);
+}
+.finding--major {
+  border-left-color: var(--sev-major-fg);
+}
+.finding--contraindicated_relative {
+  border-left-color: var(--sev-ci-relative-fg);
+  background: var(--sev-ci-relative-wash);
+}
+.finding--contraindicated_absolute {
+  border-left-color: var(--sev-ci-absolute-fg);
+  background: var(--sev-ci-absolute-wash);
+}
+
+.verdict-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gap-item);
+  padding: var(--pad-box);
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--gap-group);
+}
+
+.verdict-banner strong {
+  font-size: var(--fs-md);
+  font-weight: 650;
+}
+
+.verdict-banner svg {
+  margin-top: 2px;
+  flex: none;
+}
+
+.verdict--blocked {
+  color: var(--sev-ci-absolute-fg);
+  background: var(--sev-ci-absolute-wash);
+}
+.verdict--override {
+  color: var(--sev-ci-relative-fg);
+  background: var(--sev-ci-relative-wash);
+}
+.verdict--warn {
+  color: var(--sev-moderate-fg);
+  background: var(--sev-moderate-wash);
+}
+.verdict--clear {
+  color: var(--sev-preferred-fg);
+  background: var(--sev-preferred-wash);
+}
+
+.note-line {
+  max-width: var(--measure);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  line-height: 1.6;
+  margin-top: var(--sp-3);
+}
+
+.prose {
+  max-width: var(--measure);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+  margin: 0;
+}
+
+.hr {
+  height: 1px;
+  background: var(--line);
+  border: 0;
+  margin: var(--gap-group) 0;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+.cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap-item);
+  align-items: center;
+}
+
+.spread {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gap-group);
+  flex-wrap: wrap;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.dim {
+  color: var(--text-faint);
+}
+
+.grow {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+
+/* =========================================================== form primitives
+   src/ui/shell/fields.tsx. One height (--control-h) so a row of mixed
+   controls lines up; one place to change how every editable value looks. */
+
+.field {
+  display: grid;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+
+.field-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-tight);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.field-label b {
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.field-foot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gap-tight) var(--gap-item);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* --- number field ------------------------------------------------------- */
+
+.num-field {
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-h);
+  width: var(--field-w);
+  max-width: 100%;
+  padding: 0 var(--pad-tight);
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease,
+    background-color var(--dur-fast) ease;
+}
+
+.num-field:hover {
+  border-color: var(--line-strong);
+}
+
+.num-field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.num-field input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
+  text-align: right;
+}
+
+.num-field input:focus {
+  outline: none;
+}
+
+.num-field input::placeholder {
+  color: var(--text-faint);
+}
+
+.num-field-unit {
+  flex: none;
+  margin-left: 5px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+.num-field--lg {
+  height: var(--control-h-lg);
+  width: 116px;
+}
+
+.num-field--lg input {
+  font-size: var(--fs-lg);
+  font-weight: 550;
+}
+
+.num-field--full {
+  width: 100%;
+}
+
+.num-field--modified {
+  border-color: var(--modified-line);
+  background: var(--modified-wash);
+}
+
+.num-field--modified input,
+.num-field--modified .num-field-unit {
+  color: var(--modified);
+}
+
+.num-field--pulse {
+  animation: field-pulse var(--dur-slow) var(--ease);
+}
+
+@keyframes field-pulse {
+  from {
+    background-color: var(--accent-wash);
+    border-color: var(--accent-dim);
+  }
+}
+
+/* --- text field --------------------------------------------------------- */
+
+.text-field {
+  height: var(--control-h);
+  width: 100%;
+  padding: 0 var(--pad-tight);
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+}
+
+.text-field--lg {
+  height: var(--control-h-lg);
+  font-size: var(--fs-md);
+}
+
+.text-field:hover {
+  border-color: var(--line-strong);
+}
+
+.text-field:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+select.text-field {
+  cursor: pointer;
+}
+
+/* --- slider ------------------------------------------------------------- */
+
+.slider {
+  display: grid;
+  gap: var(--gap-tight);
+  min-width: 0;
+}
+
+.slider-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gap-item);
+}
+
+.slider-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 16px;
+}
+
+.slider-rail,
+.slider-band,
+.slider-fill {
+  position: absolute;
+  top: 50%;
+  height: 5px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.slider-rail {
+  left: 0;
+  right: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+}
+
+/* the sourced safe range, painted on the track */
+.slider-band {
+  background: var(--prov-cited-wash);
+  box-shadow: inset 1px 0 0 var(--prov-cited-line), inset -1px 0 0 var(--prov-cited-line);
+}
+
+.slider-fill {
+  left: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent-dim);
+  transition: width var(--dur-fast) linear;
+}
+
+.slider--modified .slider-fill {
+  background: var(--modified-line);
+}
+
+input.slider-input {
+  position: relative;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+input.slider-input:focus {
+  outline: none;
+}
+
+input.slider-input::-webkit-slider-runnable-track {
+  height: 5px;
+  background: transparent;
+}
+
+input.slider-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+input.slider-input:hover::-webkit-slider-thumb,
+input.slider-input:focus-visible::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+input.slider-input::-moz-range-track {
+  height: 5px;
+  background: transparent;
+}
+
+input.slider-input::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--surface-1);
+  border: 2px solid var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+.slider--modified input.slider-input::-webkit-slider-thumb {
+  border-color: var(--modified);
+}
+
+.slider-scale {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* --- segmented control -------------------------------------------------- */
+
+.seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+  flex-wrap: wrap;
+}
+
+.seg-btn {
+  height: calc(var(--control-h) - 6px);
+  padding: 0 var(--gap-item);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease;
+}
+
+.seg-btn:hover {
+  color: var(--text);
+}
+
+.seg-btn[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-sm);
+}
+
+.seg-btn[aria-pressed='true'].seg-btn--CITED {
+  color: var(--prov-cited-fg);
+}
+.seg-btn[aria-pressed='true'].seg-btn--ESTIMATED {
+  color: var(--prov-estimated-fg);
+}
+.seg-btn[aria-pressed='true'].seg-btn--NOT_FOUND {
+  color: var(--text-dim);
+}
+
+/* ===================================================== page + anatomy rail
+   Centre column scrolls, the body stays. Substances, Pills and Test subjects
+   share this so the three pages read as one product. */
+
+/* THE FRAME — research/10-LAYOUT-BLUEPRINT.md §1. Nav 248px · centre max 940px
+   · rail 360–420px. The rail is a HEADLINE RESULT, not decoration: it gets real
+   width and the figure inside it scales to fill that width, which is why this
+   track is no longer the 296px strip it was. Below 1240px it moves beneath the
+   centre column rather than compressing (see the responsive block). */
+.page-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 420px);
+  gap: var(--gap-section);
+  align-items: start;
+}
+
+/* the one centre column. Everything a page shows lives in here, stacked. */
+.page-col {
+  min-width: 0;
+  max-width: 940px;
+}
+
+/* A definite height, because the anatomy figure fills its container (variant
+   'rail' is `height: 100%`). Sticky, so the body stays while the column scrolls. */
+.rail {
+  position: sticky;
+  top: var(--gap-group);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+  min-width: 0;
+  height: calc(100vh - var(--gap-group) * 2);
+}
+
+.rail-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--gap-item);
+  min-height: 0;
+  padding: var(--pad-box);
+  background: var(--surface-1);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.rail-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 240px;
+}
+
+.rail-body > * {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* replays whenever the selected substance changes — the body reacts */
+.rail-anim {
+  animation: rail-in var(--dur) var(--ease) both;
+}
+
+@keyframes rail-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+}
+
+.rail-skeleton {
+  flex: 1 1 auto;
+  min-height: 220px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.rail-note {
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+/* ============================================================== the four zones
+   research/10-LAYOUT-BLUEPRINT.md §2. Act → Answer → Evidence → Detail, in that
+   order, on every page. The visual job here is small on purpose: a zone is a
+   heading, one line of lead, and a stack of full-width cards. It is the ORDER
+   that fixes "data popping up everywhere", not any chrome — so no zone gets a
+   box, a fill or a colour of its own. Only the Answer zone is marked at all,
+   with a single accent rule down its left edge, because it is the one thing the
+   reader came back for. */
+
+.zone {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+}
+
+/* The separation between zones is the parent column's own gap PLUS this
+   padding, so a zone boundary always reads as bigger than a card boundary. */
+.zone + .zone {
+  padding-top: var(--gap-section);
+  border-top: var(--border);
+}
+
+.zone,
+.zone-body > * {
+  scroll-margin-top: var(--gap-section);
+}
+
+.zone-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-tight);
+}
+
+.zone-head-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-group);
+  flex-wrap: wrap;
+}
+
+.zone-title {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.zone-lead {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.zone-aside {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-item);
+  flex-wrap: wrap;
+}
+
+/* One card per row, full width. Never two across — scanning left and right
+   between cards is what exhausts a reader. */
+.zone-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-section);
+  min-width: 0;
+}
+
+/* The answer is the thing the user came back for, so it is the one zone that
+   carries a mark. One hairline, in the accent, and nothing else. */
+.zone--answer {
+  border-left: 2px solid var(--accent-dim);
+  padding-left: var(--pad-box);
+}
+
+.zone--detail .zone-title,
+.zone--detail .zone-lead {
+  color: var(--text-dim);
+}
+
+/* -------------------------------------------------- forward motion (pattern 5) */
+
+.quick-jump {
+  display: flex;
+  align-items: baseline;
+  gap: var(--gap-item);
+  flex-wrap: wrap;
+  padding: var(--pad-tight) var(--pad-box);
+  background: var(--surface-2);
+  border-radius: var(--radius-pill);
+}
+
+.quick-jump-label {
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.quick-jump-list {
+  display: flex;
+  gap: var(--gap-item) var(--gap-group);
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.quick-jump-list a {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.quick-jump-list a:hover,
+.quick-jump-list a:focus-visible {
+  border-bottom-color: var(--accent-dim);
+}
+
+/* --------------------------------------------------- completeness (pattern 4) */
+
+.completeness {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-item) var(--gap-group);
+  flex-wrap: wrap;
+}
+
+.completeness-state {
+  font-size: var(--fs-sm);
+  font-weight: 650;
+  color: var(--text-dim);
+}
+
+.completeness.is-complete .completeness-state {
+  color: var(--ok);
+}
+
+.completeness-list {
+  display: flex;
+  gap: var(--gap-item) var(--gap-group);
+  flex-wrap: wrap;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.completeness-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--gap-tight);
+  font-size: var(--fs-sm);
+  color: var(--text-dim);
+}
+
+.completeness-list li.is-done {
+  color: var(--text-dim);
+}
+
+.completeness-mark {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--line-strong);
+}
+
+.completeness-list li.is-done .completeness-mark {
+  color: var(--ok);
+}
+
+/* ------------------------------------------- consequence empty state (pattern 3) */
+
+.consequence {
+  margin: 0;
+  max-width: var(--measure);
+  padding: var(--pad-tight) 0 var(--pad-tight) var(--pad-box);
+  border-left: 2px solid var(--line-strong);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.consequence--warn {
+  border-left-color: var(--warn);
+}
+
+/* ------------------------------------------------ named field group (patterns 1+2) */
+
+.fgroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-item);
+  min-width: 0;
+}
+
+.fgroup-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-item);
+  flex-wrap: wrap;
+}
+
+.fgroup-title {
+  margin: 0;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.fgroup-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+}
+
+/* THE line the blueprint calls the single biggest gap: what the product does
+   with this group. Never decorative, never optional on an input group. */
+.fgroup-why {
+  margin: 0;
+  max-width: var(--measure);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-dim);
+}
+
+.fgroup-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-group);
+  margin-top: var(--gap-tight);
+  min-width: 0;
+}
+
+/* ================================================================== motion
+   Enter transitions only, short, and only where they explain a change. */
+
+.view-enter {
+  animation: view-in var(--dur) var(--ease) both;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.lib-grid > * {
+  animation: card-in 240ms var(--ease) both;
+}
+
+.lib-grid > *:nth-child(2) {
+  animation-delay: 20ms;
+}
+.lib-grid > *:nth-child(3) {
+  animation-delay: 40ms;
+}
+.lib-grid > *:nth-child(4) {
+  animation-delay: 60ms;
+}
+.lib-grid > *:nth-child(5) {
+  animation-delay: 80ms;
+}
+.lib-grid > *:nth-child(6) {
+  animation-delay: 100ms;
+}
+.lib-grid > *:nth-child(n + 7) {
+  animation-delay: 120ms;
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.lib-card--interactive {
+  transition: box-shadow var(--dur-fast) ease, transform var(--dur-fast) ease;
+}
+
+.lib-card--interactive:hover {
+  transform: translateY(-1px);
+}
+
+/* a substance the user made, not one of the sourced records */
+.lib-card--mine {
+  box-shadow: inset 3px 0 0 var(--modified), var(--shadow-sm);
+}
+
+.lib-card--mine.lib-card--selected {
+  box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
+}
+
+/* ------------------------------------------------------------------ responsive */
+
+@media (max-width: 1240px) {
+  .page-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    position: static;
+    height: auto;
+  }
+  .rail-body {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .mtable-head,
+  .mrow-grid {
+    grid-template-columns: minmax(120px, 1.4fr) 112px 130px 30px;
+  }
+  .mtable-head .mcol-spread,
+  .mrow-spread {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .page-head,
+  .home {
+    padding-left: var(--pad-box);
+    padding-right: var(--pad-box);
+  }
+  .page-body {
+    padding-left: var(--pad-box);
+    padding-right: var(--pad-box);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view-enter,
+  .lib-grid > *,
+  .rail-anim,
+  .num-field--pulse {
+    animation: none;
+  }
+  .lib-card--interactive,
+  .num-field,
+  .text-field,
+  .slider-fill,
+  .seg-btn,
+  input.slider-input::-webkit-slider-thumb {
+    transition: none;
+  }
+  .lib-card--interactive:hover {
+    transform: none;
+  }
+}
+
+/* --------------------------------------------------------- crash containment
+   Styles for src/ErrorBoundary.tsx. Kept self-contained and token-only so the
+   recovery screen renders correctly even if a page's own stylesheet is what
+   went wrong. */
+
+.crash {
+  display: grid;
+  place-items: center;
+  min-height: 100%;
+  padding: var(--pad-page);
+}
+.crash-box {
+  max-width: var(--measure);
+  background: var(--surface-1);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  padding: var(--pad-lg);
+}
+.crash-box h1 {
+  margin: 0 0 var(--gap-group);
+  font-size: var(--fs-lg);
+  line-height: var(--lh-tight);
+}
+.crash-box p {
+  margin: 0 0 var(--gap-group);
+  color: var(--text-dim);
+}
+.crash-actions {
+  display: flex;
+  gap: var(--gap-item);
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-group);
+}
+.crash-detail {
+  border-top: var(--border);
+  padding-top: var(--gap-group);
+}
+.crash-detail summary {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: var(--fs-sm);
+}
+.crash-detail pre {
+  margin: var(--gap-item) 0 0;
+  padding: var(--pad-tight);
+  background: var(--surface-2);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-dim);
+  white-space: pre-wrap;
+  overflow-x: auto;
+  max-height: 40vh;
+}

@@ -1,0 +1,1554 @@
+{
+  "meta": {
+    "file": "data/patient_model.json",
+    "owner": "Agent D — Virtual Human",
+    "schema_version": "1.0.0",
+    "generated_utc": "2026-08-17",
+    "purpose": "Digital-twin state vector, baseline-derivation equations, comorbidity presets and pharmacogenomic presets for the PilSim antihypertensive simulator.",
+    "companion_doc": "research/02-VIRTUAL-HUMAN.md",
+    "safety_framing": "RESEARCH SIMULATOR — NOT A CLINICAL DECISION TOOL. No value in this file may be used to prescribe, withhold or adjust therapy for a real person.",
+    "expression_language": "All `expr` strings are pure JavaScript expressions over the symbol table defined by `inputs` plus previously-evaluated `derivation_pipeline` outputs. Math.* is in scope. Evaluate `derivation_pipeline` strictly in array order; it is a topologically sorted DAG.",
+    "unit_policy": "SI-adjacent clinical units, stated per variable. Creatinine in mg/dL (multiply µmol/L by 0.0113). Pressures in mmHg. Volumes in L unless suffixed _mL. Mass in kg unless suffixed _g."
+  },
+
+  "provenance_convention": {
+    "shape": "Every object that carries a number also carries a `prov` field. `prov` is either a string key into `sources`, an array of such keys, or an inline object.",
+    "inline_forms": {
+      "estimated": { "type": "ESTIMATED", "basis": "one-line justification" },
+      "not_found": { "type": "NOT_FOUND", "note": "what was searched for" },
+      "derived": { "type": "DERIVED", "from": "which cited quantities it is arithmetic over" }
+    },
+    "rule": "A number with no `prov` anywhere on its enclosing object is a defect."
+  },
+
+  "sources": {
+    "ICRP89": {
+      "name": "ICRP Publication 89 — Basic Anatomical and Physiological Data for Use in Reference Individuals",
+      "org": "International Commission on Radiological Protection (Valentin J., ed.), Ann. ICRP 32(3-4), 2002",
+      "url": "https://www.icrp.org/publication.asp?id=ICRP%20Publication%2089",
+      "full_text_mirror": "https://radon-and-life.narod.ru/pub/ICRP_89.pdf",
+      "retrieved": "2026-08-17",
+      "note": "Full text extracted and quoted directly; all ICRP values below are verbatim from the report."
+    },
+    "NIDDK_CKDEPI2021": {
+      "name": "eGFR Equations for Adults — 2021 CKD-EPI creatinine and creatinine-cystatin C equations",
+      "org": "National Institute of Diabetes and Digestive and Kidney Diseases (NIH)",
+      "url": "https://www.niddk.nih.gov/research-funding/research-programs/kidney-clinical-research-epidemiology/laboratory/glomerular-filtration-rate-equations/adults",
+      "retrieved": "2026-08-17"
+    },
+    "NKF_RACEFREE_MEDS": {
+      "name": "Race-agnostic eGFR for Medication-related Decisions in Adults (NKF Workgroup consensus)",
+      "org": "National Kidney Foundation; published Am J Health-Syst Pharm 2025;82(12):644",
+      "url": "https://www.kidney.org/professionals/ckdintercept/race-agnostic-egfr-medication-related-decisions-adults",
+      "url_publication": "https://academic.oup.com/ajhp/article-abstract/82/12/644/7903007",
+      "retrieved": "2026-08-17",
+      "stated": "\"transition from the C-G eCrCL equation to the 2021 CKD-EPIcr eGFR equation (with results adjusted for body surface area)\""
+    },
+    "URI_PKCALC": {
+      "name": "Pharmacokinetic Calculations (Devine IBW, Cockcroft-Gault, adjusted body weight)",
+      "org": "University of Rhode Island College of Pharmacy teaching handout, 2019",
+      "url": "https://web.uri.edu/wp-content/uploads/sites/1349/PK-Calculations-2019-JD.pdf",
+      "retrieved": "2026-08-17",
+      "stated": "Male: 50 kg + [2.3 kg for each inch over 5 feet]; Female: 45 kg + [2.3 kg for each inch over 5 feet]; CrCl = (140 - age)(IBW)/(72 x SCr), x0.85 for females; AdjBW = 0.4(ABW - IBW) + IBW"
+    },
+    "JANMAHASATIAN2005": {
+      "name": "Janmahasatian S et al. Quantification of lean bodyweight. Clin Pharmacokinet 2005;44(10):1051-65",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/16176118/",
+      "retrieved": "2026-08-17",
+      "stated": "LBW = (9270 x W)/(6680 + 216 x BMI) for males; LBW = (9270 x W)/(8780 + 244 x BMI) for females"
+    },
+    "WATSON1980": {
+      "name": "Watson PE, Watson ID, Batt RD. Total body water volumes for adult males and females estimated from simple anthropometric measurements. Am J Clin Nutr 1980;33(1):27-39",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/6986753/",
+      "retrieved": "2026-08-17",
+      "stated": "Male TBW = 2.447 - 0.09516A + 0.1074H + 0.3362W (SD 3.76, r2 70.4%); Female TBW = -2.097 + 0.1069H + 0.2466W (SD 3.60, r2 73.6%); A=age yr, H=height cm, W=weight kg, TBW litres"
+    },
+    "NADLER1962": {
+      "name": "Nadler SB, Hidalgo JU, Bloch T. Prediction of blood volume in normal human adults. Surgery 1962;51(2):224-232",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/21936146/",
+      "url_secondary": "https://www.ncbi.nlm.nih.gov/books/NBK526077/",
+      "retrieved": "2026-08-17",
+      "stated": "Male BV(L) = 0.3669 x H^3 + 0.03219 x W + 0.6041; Female BV(L) = 0.3561 x H^3 + 0.03308 x W + 0.1833 (H in metres, W in kg)"
+    },
+    "STATPEARLS_BSA": {
+      "name": "Body Surface Area — StatPearls",
+      "org": "NCBI Bookshelf NBK559005",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK559005/",
+      "retrieved": "2026-08-17",
+      "stated": "Du Bois: BSA = 0.007184 x (height cm)^0.725 x (weight kg)^0.425; Mosteller: BSA = sqrt((height cm x weight kg)/3600)"
+    },
+    "NBME_LABS": {
+      "name": "NBME Laboratory Values (Reference Range / SI Reference Intervals)",
+      "org": "National Board of Medical Examiners, March 2025 edition",
+      "url": "https://www.nbme.org/sites/default/files/2025-03/NBME_Laboratory_Reference_Values.pdf",
+      "retrieved": "2026-08-17",
+      "note": "Downloaded and text-extracted; every reference interval tagged with this key is verbatim from that PDF."
+    },
+    "STATPEARLS_CO": {
+      "name": "Physiology, Cardiac Output — StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK470455/",
+      "retrieved": "2026-08-17",
+      "stated": "sinoatrial node automatically depolarizes at an intrinsic rate of 60 to 100 times each minute; cardiac output generally 5-6 L/min at rest"
+    },
+    "STATPEARLS_SV": {
+      "name": "Physiology, Stroke Volume — StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK547686/",
+      "retrieved": "2026-08-17",
+      "stated": "normal resting stroke volume ranges between 60 and 100 mL"
+    },
+    "SVR_REF": {
+      "name": "Haemodynamic monitoring reference ranges (cardiac output 4-8 L/min; SVR 800-1200 dynes.sec.cm^-5)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12140562/",
+      "retrieved": "2026-08-17",
+      "stated": "Reference ranges are typically quoted as 4 to 8 L for CO ... 800 to 1200 dynes.sec.cm-5 for SVR"
+    },
+    "SVR_FORMULA": {
+      "name": "Systemic vascular resistance formula",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8662880/",
+      "retrieved": "2026-08-17",
+      "stated": "SVR (dynes/sec/cm^-5) = 80 x (MAP [mmHg] - CVP [mmHg]) / CO (L/min)"
+    },
+    "STATPEARLS_CVP": {
+      "name": "Physiology, Central Venous Pressure — StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK519493/",
+      "retrieved": "2026-08-17",
+      "stated": "A normal central venous pressure reading is between 8 to 12 mmHg"
+    },
+    "CHEMLA1998": {
+      "name": "Chemla D et al. Total arterial compliance estimated by stroke volume-to-aortic pulse pressure ratio in humans. Am J Physiol 1998;274(2):H500-5",
+      "url": "https://journals.physiology.org/doi/full/10.1152/ajpheart.1998.274.2.H500",
+      "retrieved": "2026-08-17",
+      "stated": "SV/PP ranged from 0.34 to 2.80 mL/mmHg, mean 1.46 +/- 0.69 mL/mmHg; SV/PP = 0.99 x C_area + 0.05, r = 0.98"
+    },
+    "STATPEARLS_RBF": {
+      "name": "Physiology, Renal Blood Flow and Filtration — StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK482248/",
+      "retrieved": "2026-08-17",
+      "stated": "The kidneys together receive roughly 20-25% of cardiac output ... renal plasma flow approximately 600-650 mL/min, 20% of which is filtered"
+    },
+    "STATPEARLS_WATER": {
+      "name": "Physiology, Water Balance — StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK541059/",
+      "retrieved": "2026-08-17",
+      "stated": "For the average 70 kg man, 60% of total body weight is water, amounting to 42 L; two-thirds intracellular (28 L); one-third extracellular (14 L), of which 75% (10.5 L) interstitial and 25% (3.5 L) plasma"
+    },
+    "UIOWA_PRA": {
+      "name": "Renin Activity, Plasma — University of Iowa Department of Pathology Laboratory Services Handbook",
+      "url": "https://www.healthcare.uiowa.edu/path_handbook/handbook/test2220.html",
+      "retrieved": "2026-08-17",
+      "stated": "Na-replete, upright, 18-39 years: <0.6-4.3 ng/mL/hour; >=40 years: <0.6-3.0 ng/mL/hour. Na-depleted, upright, 18-39 years: 2.9-24.0; >=40 years: 2.9-10.8"
+    },
+    "AHA_ACC_2025_HTN": {
+      "name": "2025 AHA/ACC/AANP/AAPA/ABC/ACCP/ACPM/AGS/AMA/ASPC/NMA/PCNA Guideline for the Prevention, Detection, Evaluation and Management of High Blood Pressure in Adults",
+      "url": "https://www.jacc.org/doi/10.1016/j.jacc.2025.07.010",
+      "url_summary": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+      "retrieved": "2026-08-17",
+      "stated": "Diagnostic threshold for hypertension remains >=130/80 mm Hg; overarching treatment goal <130/80 mm Hg for all adults; stage 2 = BP >=140/90; PREVENT replaces the Pooled Cohort Equations for 10-year risk"
+    },
+    "ESC_2024_BP": {
+      "name": "2024 ESC Guidelines for the management of elevated blood pressure and hypertension",
+      "url": "https://www.escardio.org/news/news-room/congress-news/2024-esc-clinical-practice-guidelines-for-the-management-of-elevated-blood-pressure-and-hypertension/",
+      "url_commentary": "https://www.ahajournals.org/doi/10.1161/HYPERTENSIONAHA.124.24173",
+      "retrieved": "2026-08-17",
+      "stated": "Three categories: non-elevated <120/70; elevated 120-139/70-89; hypertension >=140/90. Default systolic target 120-129 mmHg."
+    },
+    "CPIC_BB_2024": {
+      "name": "Duarte JD et al. CPIC Guideline for CYP2D6, ADRB1, ADRB2, ADRA2C, GRK4 and GRK5 Genotypes and Beta-Blocker Therapy. Clin Pharmacol Ther 2024 (PMID 38951961)",
+      "url": "https://files.cpicpgx.org/data/guideline/publication/beta_blockers/2024/38951961.pdf",
+      "url_landing": "https://ascpt.onlinelibrary.wiley.com/doi/10.1002/cpt.3351",
+      "retrieved": "2026-08-17",
+      "note": "PDF downloaded and text-extracted; Table 1 and Table 2 quoted verbatim."
+    },
+    "CPIC_FREQ_CYP2D6": {
+      "name": "CPIC CYP2D6 Frequency Table — 'Frequencies of CYP2D6 phenotypes in biogeographical groups'",
+      "url": "https://files.cpicpgx.org/data/report/current/frequency/CYP2D6_frequency_table.xlsx",
+      "retrieved": "2026-08-17",
+      "note": "XLSX downloaded and the 'Phenotype frequency' sheet parsed; activity-score rows summed into CPIC phenotype bins."
+    },
+    "CPIC_FREQ_CYP2C9": {
+      "name": "CPIC CYP2C9 Frequency Table — 'Frequencies of CYP2C9 phenotypes in biogeographical groups'",
+      "url": "https://files.cpicpgx.org/data/report/current/frequency/CYP2C9_frequency_table.xlsx",
+      "retrieved": "2026-08-17",
+      "note": "XLSX downloaded and the 'Phenotype frequency' sheet parsed."
+    },
+    "RUDESHEIM2020": {
+      "name": "Rudesheim S et al. Physiologically Based Pharmacokinetic Modeling of Metoprolol Enantiomers and alpha-Hydroxymetoprolol to Describe CYP2D6 Drug-Gene Interactions. Pharmaceutics 2020;12(12):1200",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/33322314/",
+      "retrieved": "2026-08-17",
+      "stated": "CYP2D6 poor metabolizers (5.7% of US population) show approximately five-fold higher metoprolol exposure compared to CYP2D6 normal metabolizers"
+    },
+    "YASAR2002": {
+      "name": "Yasar U et al. Pharmacokinetics of losartan and its metabolite E-3174 in relation to the CYP2C9 genotype. Clin Pharmacol Ther 2002;71(1):89-98",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/11823761/",
+      "retrieved": "2026-08-17",
+      "stated": "AUC(losartan)/AUC(E-3174) was higher in the subject with CYP2C9*3/*3 (30-fold) and in CYP2C9*1/*3 and *2/*3 groups (approximately 2- and 3-fold) compared with CYP2C9*1/*1; urinary ratio approximately 40-fold higher in *3/*3 (n=3)"
+    },
+    "PARK2021_LOSARTAN": {
+      "name": "Park Y-A et al. Influence of CYP2C9 Genetic Polymorphisms on the Pharmacokinetics of Losartan and Its Active Metabolite E-3174: A Systematic Review and Meta-Analysis. J Pers Med 2021;11(7):617",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8303964/",
+      "retrieved": "2026-08-17",
+      "stated": "Variant carriers vs *1/*1: losartan AUC0-inf mean difference +0.17 ug*h/mL (95% CI 0.04, 0.29); E-3174 AUC0-inf mean difference -0.35 ug*h/mL (95% CI -0.62, -0.08); E-3174 Cmax mean difference -0.13 ug/mL (95% CI -0.17, -0.09); 8 studies, 139 healthy subjects"
+    },
+    "GERMOVSEK2017": {
+      "name": "Germovsek E, Barker CI, Sharland M, Standing JF. Scaling clearance in paediatric pharmacokinetics: All models are wrong, which are useful? Br J Clin Pharmacol 2017;83(4):777-790",
+      "url": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5346879/",
+      "retrieved": "2026-08-17",
+      "stated": "allometric scaling with a fixed exponent of 0.75 is often applied for clearance; theory-based allometric exponent for clearance is 3/4"
+    },
+    "WHO_ASIAN_BMI": {
+      "name": "WHO Expert Consultation. Appropriate body-mass index for Asian populations and its implications for policy and intervention strategies. Lancet 2004;363:157-63",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/14726171/",
+      "retrieved": "2026-08-17",
+      "stated": "additional trigger points for public health action at BMI 23, 27.5, 32.5 and 37.5 kg/m2 for Asian populations, alongside the international cut-offs 18.5, 25, 30, 35, 40"
+    },
+    "LANCET_OBESITY_2025": {
+      "name": "Rubino F et al. Definition and diagnostic criteria of clinical obesity. Lancet Diabetes Endocrinol 2025;13(3):221-262 (Commission, published 14 Jan 2025)",
+      "url": "https://www.thelancet.com/journals/landia/article/PIIS2213-8587(24)00316-4/fulltext",
+      "retrieved": "2026-08-17",
+      "stated": "Distinguishes preclinical obesity (excess adiposity, preserved organ function) from clinical obesity (excess adiposity plus objective organ/tissue dysfunction); adiposity confirmed by direct fat measurement or by anthropometric criteria in addition to BMI"
+    },
+    "AAFP_OH": {
+      "name": "Orthostatic Hypotension: A Practical Approach. Am Fam Physician 2022;105(1):39-49",
+      "url": "https://www.aafp.org/pubs/afp/issues/2022/0100/p39.html",
+      "retrieved": "2026-08-17",
+      "stated": "Orthostatic hypotension is diagnosed when systolic BP drops by >=20 mm Hg or diastolic BP drops by >=10 mm Hg within 3 minutes of standing"
+    },
+    "MONAHAN2001_BRS": {
+      "name": "Monahan KD et al. Age-associated changes in cardiovagal baroreflex sensitivity are related to central arterial compliance. Am J Physiol Heart Circ Physiol 2001;281(1):H284-9",
+      "url": "https://journals.physiology.org/doi/full/10.1152/ajpheart.2001.281.1.H284",
+      "url_secondary": "https://pubmed.ncbi.nlm.nih.gov/11080267/",
+      "retrieved": "2026-08-17",
+      "stated": "cardiovagal BRS declined progressively with age (r = -0.69, P <= 0.001); in sedentary men cardiovagal BRS was lower in middle-aged (~33%) and older (~60%) groups vs young"
+    },
+    "ADA_2026": {
+      "name": "American Diabetes Association, Standards of Care in Diabetes 2026, Section 2 (Diagnosis and Classification), Table 2.1 and 2.2",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690183/",
+      "retrieved": "2026-08-17",
+      "stated": "Diabetes: FPG >=126 mg/dL (>=7.0 mmol/L) after >=8 h fast; 2-h PG >=200 mg/dL on 75-g OGTT; HbA1c >=6.5% (>=48 mmol/mol); random PG >=200 mg/dL with symptoms. Prediabetes: FPG 100-125 mg/dL; 2-h PG 140-199 mg/dL; A1C 5.7-6.4%."
+    },
+    "ADA_2026_CKD": {
+      "name": "American Diabetes Association, Standards of Care in Diabetes 2026, Section 11 (Chronic Kidney Disease and Risk Management)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690176/",
+      "retrieved": "2026-08-17",
+      "stated": "Albuminuria categories: <30 mg/g; >=30 to <300 mg/g; >=300 mg/g creatinine"
+    },
+    "T2DM_HR": {
+      "name": "Resting heart rate by diabetes duration in type 2 diabetes. Am J Cardiovasc Dis 2022",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9490161/",
+      "retrieved": "2026-08-17",
+      "stated": "Healthy controls 71.39 (66.1, 82.1) bpm; T2DM <5 y 80 (75.9, 90.0); 5-10 y 79.37; >10 y 82.06 bpm"
+    },
+    "T2DM_PV": {
+      "name": "Plasma volume status in type 2 diabetes vs matched controls. Cardiovasc Diabetol 2025",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12805681/",
+      "retrieved": "2026-08-17",
+      "stated": "Absolute plasma volume 2628.22 +/- 337.78 mL (T2DM) vs 2597.23 +/- 255.81 mL (controls), p = 0.716; relative plasma volume status -9.90 +/- 7.65% vs -13.63 +/- 4.52%, difference +3.73% (95% CI 0.24-7.22, p = 0.041)"
+    },
+    "CACHAT_2015": {
+      "name": "Cachat F et al. A Systematic Review of Glomerular Hyperfiltration Assessment and Definition in the Medical Literature. Clin J Am Soc Nephrol 2015",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC4348676/",
+      "retrieved": "2026-08-17",
+      "stated": "Hyperfiltration thresholds across 405 studies ranged from 90.7 to 175 ml/min per 1.73 m2 (median, 135), IQR 130-140; 70% and 50% of patients with type 1 and 2 diabetes develop glomerular hyperfiltration early"
+    },
+    "T2DM_PWV": {
+      "name": "Carotid-femoral pulse wave velocity in type 2 diabetes. Pulse (Basel) 2018",
+      "url": "https://europepmc.org/article/MED/29761082",
+      "retrieved": "2026-08-17",
+      "stated": "cf-PWV 12.5 +/- 0.36 m/s (T2DM) vs 10.4 +/- 0.12 m/s (non-diabetic)"
+    },
+    "KDIGO_2024": {
+      "name": "KDIGO 2024 Clinical Practice Guideline for the Evaluation and Management of Chronic Kidney Disease — GFR and albuminuria categories",
+      "url": "https://www.clevelandclinicmeded.com/showcase/EKCC147/docs/0815_Sharakova_2024%20CKD.pdf",
+      "url_secondary": "https://academic.oup.com/ajhp/article/82/12/660/8107680",
+      "retrieved": "2026-08-17",
+      "stated": "G1 >=90 Normal or high; G2 60-89 Mildly decreased; G3a 45-59; G3b 30-44; G4 15-29 Severely decreased; G5 <15 Kidney failure (mL/min/1.73 m2). A1 <30 mg/g Normal to mildly increased; A2 30-300 Moderately increased; A3 >300 Severely increased. CKD = abnormalities of kidney structure or function present for at least 3 months.",
+      "note": "kdigo.org returns HTTP 403 to automated fetches; this is a faithful reproduction of the KDIGO table. Flagged as a secondary carrier."
+    },
+    "CKD_K": {
+      "name": "Hyperkalaemia prevalence across CKD stages (European cohort), Diagnostics 2025; and advanced-CKD potassium review",
+      "url": "https://doi.org/10.3390/diagnostics16091309",
+      "url_secondary": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9356601/",
+      "retrieved": "2026-08-17",
+      "stated": "Hyperkalaemia prevalence 6.5% for eGFR category G1 rising to 47.5% in G5 and 44% on dialysis; median K+ 4.5 (4.3-4.7) mmol/L. In advanced CKD (mean eGFR 14.6) prevalence of 40% for serum potassium above 5.5 mmol/L. Severity bands: mild 5.5-5.9; moderate 6.0-6.4; severe >=6.5 mmol/L."
+    },
+    "CKD_ANEMIA": {
+      "name": "Anaemia prevalence by CKD stage, NHANES 1999-2018. Clin Kidney J 2023",
+      "url": "https://academic.oup.com/ckj/article/16/2/303/6825468",
+      "retrieved": "2026-08-17",
+      "stated": "Anaemia prevalence rises from 8.4% at stage 1 to 53.4% at stage 5"
+    },
+    "CKD_ACIDOSIS": {
+      "name": "Metabolic acidosis in CKD (CRIC cohort commentary)",
+      "url": "https://ajkdblog.org/2019/10/21/metabolic-acidosis-in-ckd/",
+      "retrieved": "2026-08-17",
+      "stated": "Prevalence 13% in CKD Stage 3 and 37% in CKD Stage 4; serum bicarbonate typically < 22 mEq/L; not encountered until the eGFR decreases to < 40 mL/min"
+    },
+    "ESC_2021_HF": {
+      "name": "2021 ESC Guidelines for the diagnosis and treatment of acute and chronic heart failure, Table 3",
+      "url": "https://academic.oup.com/eurheartj/article/42/36/3599/6358045",
+      "retrieved": "2026-08-17",
+      "stated": "HFrEF LVEF <=40%; HFmrEF 41-49%; HFpEF >=50%"
+    },
+    "HFREF_HEMO": {
+      "name": "Invasive haemodynamics and systemic vascular resistance index in HFrEF. PLOS One 2024",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0312582",
+      "retrieved": "2026-08-17",
+      "stated": "LVEF 23.4% (SD 5.2); cardiac index 2.7 (SD 0.7) L/min/m2; SVRI median 2116.0 (IQR 912) dyn.s.cm-5.m-2, high-SVRI group mean 2403.9, cutoff 1200"
+    },
+    "HFREF_VOLUME": {
+      "name": "Miller WL, Mullan BP. Volume Overload Profiles in Patients With Preserved and Reduced Ejection Fraction Chronic Heart Failure. JACC Heart Fail 2016",
+      "url": "https://www.jacc.org/doi/10.1016/j.jchf.2016.01.005",
+      "retrieved": "2026-08-17",
+      "stated": "In patients with HFrEF, total blood volume was expanded by 37 +/- 25% (0% to 107%) above normal"
+    },
+    "OPTIMIZE_HF_NA": {
+      "name": "Gheorghiade M et al. Relationship between admission serum sodium concentration and clinical outcomes in patients hospitalized for heart failure (OPTIMIZE-HF). Eur Heart J 2007",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/17309900/",
+      "retrieved": "2026-08-17",
+      "stated": "25.3% of 47,647 heart failure patients had hyponatremia on admission (<135 mmol/L)"
+    },
+    "FRAMINGHAM_REF": {
+      "name": "Framingham Heart Study healthy reference group haemodynamics and blood pressure by age",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2981604/",
+      "retrieved": "2026-08-17",
+      "stated": "Cardiac output 4.1 +/- 0.8 L/min in the healthy reference group; blood pressure <50 y 115 +/- 13 / 75 +/- 10; >=50 y 128 +/- 17 / 74 +/- 10 mm Hg"
+    },
+    "LEMMENS_2006": {
+      "name": "Lemmens HJM, Bernstein DP, Brodsky JB. Estimating blood volume in obese and morbidly obese patients. Obes Surg 2006;16(6):773-6",
+      "url": "https://link.springer.com/article/10.1381/096089206777346673",
+      "retrieved": "2026-08-17",
+      "stated": "Indexed blood volume = 70 / sqrt(BMI/22) mL/kg; the mean value for indexed blood volume in normal weight adults is 70 mL/kg"
+    },
+    "OBESITY_HEMO": {
+      "name": "Cardiovascular consequences of obesity (reviewing Stelfox 2006, de Divitiis 1981, Messerli 1983)",
+      "url": "https://derangedphysiology.com/main/cicm-primary-exam/cardiovascular-system/Chapter-506/cardiovascular-consequences-obesity",
+      "retrieved": "2026-08-17",
+      "stated": "0.08 L/min increase in cardiac output per 1 kg/m2 BMI; 1.35 mL increase in stroke volume per 1 kg/m2 BMI; resting heart rate essentially unchanged or slightly elevated; normotensive obese patients show ~20% decrease in systemic vascular resistance compared to lean controls",
+      "grade": "SECONDARY — a well-referenced educational site citing Stelfox 2006 and de Divitiis 1981. Confirm against the primary papers before these numbers are shown to a clinician judge."
+    },
+    "CHAGNAC_2008": {
+      "name": "Chagnac A et al. Obesity-induced glomerular hyperfiltration: its involvement in the pathogenesis of tubular sodium reabsorption. Nephrol Dial Transplant 2008;23(12):3946-52",
+      "url": "https://academic.oup.com/ndt/article-abstract/23/12/3946/1885676",
+      "retrieved": "2026-08-17",
+      "stated": "In severe obesity vs lean: GFR 61% higher (p<0.00001), renal plasma flow 28% higher (p<0.005), filtration fraction 29% higher"
+    },
+    "METSYN_HARMONIZED": {
+      "name": "Alberti KGMM et al. Harmonizing the Metabolic Syndrome: A Joint Interim Statement. Circulation 2009;120:1640-45",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/19805654/",
+      "url_secondary": "https://www.ncbi.nlm.nih.gov/books/NBK459248/",
+      "retrieved": "2026-08-17",
+      "stated": "Three abnormal findings out of 5; no obligatory component; regional waist cut-points. Criteria: waist >40 in (men) / >35 in (women); triglycerides >=150 mg/dL; HDL <40 (M) / <50 (W) mg/dL; fasting glucose >=100 mg/dL; SBP >=130 or DBP >=85 mm Hg"
+    },
+    "AGING_KIDNEY": {
+      "name": "The ageing kidney — structural and functional decline",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2901622/",
+      "retrieved": "2026-08-17",
+      "stated": "GFR declines by about 8 ml/min/1.73 m2 per decade after the 4th decade; renal blood flow well-maintained at about 600 ml/min until age 40, then declines by about 10 percent per decade; renal mass 400 g falling to under 300 g by the ninth decade"
+    },
+    "AGING_HEMO": {
+      "name": "Invasive resting haemodynamics across the adult age spectrum in 104 healthy volunteers. JACC Heart Fail 2019",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10367061/",
+      "retrieved": "2026-08-17",
+      "stated": "Resting cardiac index: <40 y 3.0 +/- 0.8; 40-60 y 3.0 +/- 0.9; >60 y 2.2 +/- 0.6 L/m2/min (age vs CI r = -0.39, p<0.001). Resting stroke volume index: <40 y 39 +/- 10; 40-60 y 40 +/- 10; >60 y 31 +/- 10 mL/m2, a 23% decline across the age distribution. Resting heart rate 79 +/- 13 / 76 +/- 12 / 75 +/- 16 bpm; age was not associated with resting heart rate (r = 0.10; p = 0.15)"
+    },
+    "PWV_REF_2010": {
+      "name": "Reference Values for Arterial Stiffness Collaboration. Determinants of pulse wave velocity in healthy people. Eur Heart J 2010;31(19):2338-50, Table 4",
+      "url": "https://academic.oup.com/eurheartj/article/31/19/2338/441416",
+      "retrieved": "2026-08-17",
+      "stated": "cf-PWV mean by age: <30 y 6.2 (4.7-7.6); 30-39 y 6.5; 40-49 y 7.2; 50-59 y 8.3; 60-69 y 10.3; >=70 y 10.9 m/s"
+    },
+    "KUCHEL_AGING_PK": {
+      "name": "Kuchel GA. Ageing and pharmacokinetics — National Academies of Sciences workshop material, 2020",
+      "url": "https://www.nationalacademies.org/cdn/materials/9fba0f21-3f9b-4a56-aba4-de82bb974899",
+      "retrieved": "2026-08-17",
+      "stated": "Hepatic blood flow declines by 10% per decade; liver mass decreases by 20-40% with aging; reduction in clearance of flow-limited drugs by 30-40%"
+    },
+    "OH_PREVALENCE": {
+      "name": "Orthostatic Hypotension — StatPearls, and Am Fam Physician 2022;105(1):39-49",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK448192/",
+      "url_secondary": "https://www.aafp.org/pubs/afp/issues/2022/0100/p39.html",
+      "retrieved": "2026-08-17",
+      "stated": "Approximately 20% of those 60 years and older; Cardiovascular Health Study >=65 y 18.2%; 41% in individuals aged 80 years or older"
+    },
+    "GOLD_2025": {
+      "name": "GOLD 2025 spirometry guide — classification of airflow limitation severity in COPD",
+      "url": "https://goldcopd.org/gold-spirometry-guide/",
+      "retrieved": "2026-08-17",
+      "stated": "GOLD 1 FEV1 >=80% predicted; GOLD 2 50% <= FEV1 < 80%; GOLD 3 30% <= FEV1 < 50%; GOLD 4 FEV1 < 30%; applies only when post-bronchodilator FEV1/FVC < 0.70"
+    },
+    "SALPETER_COPD": {
+      "name": "Salpeter SR et al. Cardioselective beta-blockers in patients with reactive airway disease: a meta-analysis / Cochrane CD003566",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/14561016/",
+      "url_secondary": "https://www.aafp.org/pubs/afp/issues/2003/0301/p1112.html",
+      "url_tertiary": "https://www.ncbi.nlm.nih.gov/books/NBK169238/",
+      "retrieved": "2026-08-17",
+      "stated": "COPD, cardioselective beta-blocker single dose: FEV1 change vs placebo -2.05% (95% CI -6.05% to 1.96%); longer duration -2.55% (CI -5.94% to 0.84%). Reactive airway disease / asthma, cardioselective single dose: 7.46 percent reduction in FEV1, which reversed after administration of a beta agonist (19 studies, 240 patients); with continued treatment (10 studies, 141 participants) no participant had a significant drop in FEV1 or developed new symptoms. Meta-analysis of 5 studies: FEV1 decreased by 0.14 L with nonselective beta-blockers and by 0.03 L with cardioselective beta-blockers."
+    },
+    "ACR_GOUT_2020": {
+      "name": "FitzGerald JD et al. 2020 American College of Rheumatology Guideline for the Management of Gout",
+      "url": "https://assets.contentstack.io/v3/assets/bltee37abb6b278ab2c/blt04d52e3b6ff5112f/632cab5b258fb55f6b2186af/gout-guideline-2020.pdf",
+      "url_secondary": "https://www.acpjournals.org/doi/10.7326/ANNALS-24-03951",
+      "retrieved": "2026-08-17",
+      "stated": "Asymptomatic hyperuricemia defined as a serum urate concentration of >=6.8 mg/dl with no prior gout flares or subcutaneous tophi. We strongly recommend continuing urate-lowering therapy to achieve and maintain a serum urate target of <6 mg/dl over no target (PICO 14, certainty High). High-burden marker: serum urate >9 mg/dl. When urate levels exceed the limit of solubility (6.8 mg/dL [400 umol/L]), monosodium urate crystals may form."
+    },
+    "GOUT_BASELINE_SU": {
+      "name": "Baseline serum urate in gout trial cohorts (pegloticase phase II; MIRROR)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3317813/",
+      "url_secondary": "https://pmc.ncbi.nlm.nih.gov/articles/PMC9404640/",
+      "retrieved": "2026-08-17",
+      "stated": "mean baseline serum urate of 9.8 mg/dL; MIRROR 9.2 +/- 2.5 mg/dL; pegloticase phase II 9.2 mg/dl"
+    },
+    "PREG_PHYSIOLOGY": {
+      "name": "Physiology, Maternal Changes — StatPearls; and Medscape Normal Pregnancy Physiology",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK539766/",
+      "url_secondary": "https://emedicine.medscape.com/article/162004-overview",
+      "retrieved": "2026-08-17",
+      "stated": "Maternal blood volume is increased by approximately 1.5 litres; red cell mass by approximately 30%; plasma volume increases by 45-50% compared with a 20% increase in red blood cell mass. By 8 weeks of gestation there is a 20% increase in cardiac output, rising approximately 40% throughout pregnancy. Heart rate increases by 10-15 beats per minute. Systemic vascular resistance reaches a nadir by the 24th week and remains approximately 20% below prepregnancy values at the end of pregnancy. Blood pressure reaches its lowest point at about 20-24 weeks gestation. Glomerular filtration rate increases by about 50%; renal plasma flow by as much as 80%."
+    },
+    "PREG_EGFR": {
+      "name": "Estimated GFR and serum creatinine by trimester in pregnancy. PLOS Global Public Health 2022",
+      "url": "https://journals.plos.org/globalpublichealth/article?id=10.1371/journal.pgph.0000443",
+      "retrieved": "2026-08-17",
+      "stated": "eGFR: non-pregnant 105.1 (27.9); 1st trimester 123.4 (10.6); 24-30 weeks 129.0 (10.0) mL/min/1.73 m2. Serum creatinine: non-pregnant 62.8 (12.4) umol/L; 4-7 w 55.1 (8.3); 8-9 w 52.7 (8.1); 10-12 w 51.1 (9.1); 24-30 w 47.7 (8.1) — 84.7% and 76.4% of non-pregnant in trimesters 1 and 2"
+    },
+    "AHA_ACC_2023_CCD": {
+      "name": "2023 AHA/ACC/ACCP/ASPC/NLA/PCNA Guideline for the Management of Patients With Chronic Coronary Disease. J Am Coll Cardiol 2023",
+      "url": "https://www.jacc.org/doi/10.1016/j.jacc.2023.04.003",
+      "retrieved": "2026-08-17",
+      "stated": "Beta-blockers indicated for reduced left ventricular ejection fraction (LVEF < 50%); not recommended in chronic coronary disease with LVEF above 50%"
+    },
+    "CIRRHOSIS_PBPK": {
+      "name": "Physiological parameter changes by Child-Pugh class as fractions of healthy control — dexamethasone PBPK population model, Table 1. Br J Clin Pharmacol 2022",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8832977/",
+      "retrieved": "2026-08-17",
+      "stated": "Fraction of healthy control by Child-Pugh class A/B/C: portal vein flow 0.91/0.63/0.55; hepatic artery flow 1.40/1.62/1.91; cardiac output 1.16/1.32/1.40; liver weight 0.81/0.65/0.53; CYP3A4 intrinsic clearance 0.59/0.39/0.25; CYP3A4 gut abundance 0.84/0.57/0.35; serum albumin 41.10/33.90/26.30 g/L; GFR 0.76/0.63/0.60"
+    },
+    "HEPATIC_FLOW": {
+      "name": "Hepatic Circulation — NCBI Bookshelf; and hepatic blood flow reference values",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK53069/",
+      "url_secondary": "https://derangedphysiology.com/main/cicm-primary-exam/cardiovascular-system/Chapter-475/hepatic-blood-flow",
+      "retrieved": "2026-08-17",
+      "stated": "100-130 ml/min per 100 g of liver, 30 ml/min per kilogram of body weight; the liver receives 25% of the cardiac output. Total 1200-1800 mL/min (20-25% of cardiac output); portal vein 700-800 mL/min (approximately 70%); hepatic artery 350-550 mL/min (30-40% of total flow)"
+    },
+    "HTTK": {
+      "name": "US EPA httk (High-Throughput Toxicokinetics) datatables — HTTK-Physiology-Data.txt and Tissue-Volumes-Flows.txt",
+      "org": "US Environmental Protection Agency, CompTox / ExpoCast. CRAN package httk v2.7.4 (2025-12-08). GPL-3.",
+      "url_physiology": "https://raw.githubusercontent.com/USEPA/CompTox-ExpoCast-httk/main/datatables/HTTK-Physiology-Data.txt",
+      "url_tissue": "https://raw.githubusercontent.com/USEPA/CompTox-ExpoCast-httk/main/datatables/Tissue-Volumes-Flows.txt",
+      "retrieved": "2026-08-17",
+      "note": "Both TSVs downloaded and parsed by this agent. Every row carries its own in-band literature citation: organ volumes cite ILSI-RSI 1994, organ blood flows cite Davies and Morris 1993. Acquisition recipe and verified curl commands are in research/01-DATA-ACQUISITION.md section 4.1 (Agent A).",
+      "why_it_matters": "It is the machine-readable, build-time-bakeable, no-authentication source for the whole-body physiology this file describes in prose. Roughly 58 KB for the full set. It removes any runtime API dependency for the virtual human."
+    },
+    "DAVIES_MORRIS_1993": {
+      "name": "Davies B, Morris T. Physiological parameters in laboratory animals and humans. Pharm Res 1993;10(7):1093-5",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/8378254/",
+      "retrieved": "2026-08-17",
+      "note": "Cited in-band by every human organ-blood-flow row in the httk Tissue-Volumes-Flows table. Not fetched directly by this agent; used via httk, which is a secondary but explicitly attributed carrier."
+    },
+    "BRS_NORMALS": {
+      "name": "Baroreflex Sensitivity: Measurement and Clinical Implications (review)",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6931942/",
+      "retrieved": "2026-08-17",
+      "stated": "using the phenylephrine method, average values of about 15 ms/mmHg have been reported in normal subjects"
+    }
+  },
+
+  "inputs": {
+    "_note": "These are the fields the Test-Subject page exposes. `editable` fields appear in the parameter panel; `required` fields must have a value before a simulation can start (defaults supplied).",
+    "demographics": [
+      {
+        "id": "age_years", "label": "Age", "units": "years", "type": "number",
+        "default": 45, "min": 18, "max": 95, "step": 1, "required": true,
+        "note": "Model is validated for adults only. Paediatric maturation functions are NOT implemented — see validity_limits.",
+        "prov": { "type": "ESTIMATED", "basis": "Design decision: all baseline equations used here (CKD-EPI 2021, Watson, Janmahasatian, Nadler) were derived in adults." }
+      },
+      {
+        "id": "sex", "label": "Sex at birth", "type": "enum", "values": ["male", "female"], "default": "male", "required": true,
+        "note": "Used as a biological covariate in CKD-EPI 2021, Watson, Janmahasatian, Nadler and the ICRP reference individual. NOT gender identity; the UI should say so.",
+        "prov": ["NIDDK_CKDEPI2021", "WATSON1980", "JANMAHASATIAN2005", "NADLER1962", "ICRP89"]
+      },
+      {
+        "id": "height_cm", "label": "Height", "units": "cm", "type": "number",
+        "default_male": 176, "default_female": 163, "min": 140, "max": 210, "step": 1, "required": true,
+        "prov": "ICRP89", "prov_stated": "ICRP 89 Table 2.9 p.19: reference adult height 176 cm (male) / 163 cm (female)"
+      },
+      {
+        "id": "weight_kg", "label": "Body weight", "units": "kg", "type": "number",
+        "default_male": 73, "default_female": 60, "min": 35, "max": 200, "step": 0.5, "required": true,
+        "prov": "ICRP89", "prov_stated": "ICRP 89 Table 2.9 p.19: reference adult mass 73 kg (male) / 60 kg (female)"
+      },
+      {
+        "id": "ancestry_group", "label": "Biogeographic ancestry group", "type": "enum",
+        "values": ["Central/South Asian", "European", "East Asian", "Near Eastern", "Latino", "African American/Afro-Caribbean", "Sub-Saharan African", "American", "Oceanian", "Unknown"],
+        "default": "Central/South Asian",
+        "used_for": ["pharmacogenomic prior probabilities", "BMI cut-point set"],
+        "explicitly_not_used_for": ["eGFR estimation"],
+        "note": "The 2021 CKD-EPI equations removed the race coefficient; PilSim MUST NOT reintroduce any ancestry term into eGFR. Ancestry here is used only as a prior over CYP genotypes (where CPIC publishes per-group frequencies) and to choose the WHO BMI cut-point set. Default is Central/South Asian because that is the CPIC biogeographic group closest to Uzbekistan; 'Near Eastern' is an equally defensible proxy and both are offered.",
+        "prov": ["NIDDK_CKDEPI2021", "CPIC_FREQ_CYP2D6", "WHO_ASIAN_BMI"]
+      },
+      {
+        "id": "pregnant", "label": "Pregnant", "type": "boolean", "default": false,
+        "gated_by": "sex === 'female' && age_years >= 18 && age_years <= 50"
+      },
+      {
+        "id": "lactating", "label": "Breastfeeding", "type": "boolean", "default": false,
+        "gated_by": "sex === 'female'",
+        "added_for": "Agent C's rules reference demographic key `lactating`. It carries no physiological modifiers in this model — it is a pure rules flag, deliberately not given invented physiology."
+      },
+      {
+        "id": "gestational_week", "label": "Gestational age", "units": "weeks", "type": "number",
+        "default": 20, "min": 4, "max": 42, "gated_by": "pregnant === true"
+      }
+    ],
+
+    "vitals": [
+      {
+        "id": "sbp_mmHg", "label": "Systolic blood pressure", "units": "mmHg", "type": "number",
+        "default": 118, "min": 70, "max": 250, "required": true,
+        "reference": "Non-elevated <120 (ESC 2024); hypertension >=130 systolic (AHA/ACC 2025) or >=140 (ESC 2024)",
+        "prov": ["ESC_2024_BP", "AHA_ACC_2025_HTN"],
+        "default_prov": { "type": "ESTIMATED", "basis": "Chosen just inside the ESC 2024 'non-elevated' band (<120/70) so the untreated healthy default twin is normotensive under both the 2025 AHA/ACC and 2024 ESC classifications." }
+      },
+      {
+        "id": "dbp_mmHg", "label": "Diastolic blood pressure", "units": "mmHg", "type": "number",
+        "default": 72, "min": 40, "max": 150, "required": true,
+        "prov": ["ESC_2024_BP", "AHA_ACC_2025_HTN"],
+        "default_prov": { "type": "ESTIMATED", "basis": "Paired with SBP 118 to give a pulse pressure of 46 mmHg and, at the reference stroke volume, an arterial compliance of ~1.5 mL/mmHg — the mean of Chemla 1998 (1.46 +/- 0.69 mL/mmHg)." }
+      },
+      {
+        "id": "heart_rate_bpm", "label": "Resting heart rate", "units": "bpm", "type": "number",
+        "default": 70, "min": 30, "max": 180, "required": true,
+        "reference_range": [60, 100],
+        "prov": "STATPEARLS_CO"
+      },
+      {
+        "id": "hematocrit_frac", "label": "Haematocrit", "units": "fraction", "type": "number",
+        "default_male": 0.47, "default_female": 0.41, "min": 0.15, "max": 0.65,
+        "reference_range_male": [0.41, 0.53], "reference_range_female": [0.36, 0.46],
+        "prov": "NBME_LABS",
+        "default_prov": { "type": "DERIVED", "from": "Midpoint of the NBME sex-specific reference interval (male 0.41-0.53 -> 0.47; female 0.36-0.46 -> 0.41). Cross-checks against ICRP 89 para 309, which states red cells are 'about 43% (42-52%)' of blood volume in adult males and 'about 38% (37-48%)' in adult females." }
+      }
+    ],
+
+    "labs": [
+      { "id": "scr_mg_dL", "label": "Serum creatinine", "units": "mg/dL", "default_male": 0.90, "default_female": 0.70, "reference_range": [0.6, 1.2], "si": "53-106 umol/L", "prov": "NBME_LABS",
+        "default_prov": { "type": "DERIVED", "from": "Set equal to the CKD-EPI 2021 kappa constants (0.9 male, 0.7 female), which are by construction the approximate median creatinine of the healthy sex-specific population; both lie inside the NBME 0.6-1.2 mg/dL interval." } },
+      { "id": "serum_k_mmol_L", "label": "Serum potassium", "units": "mmol/L", "default": 4.2, "reference_range": [3.5, 5.0], "prov": "NBME_LABS",
+        "default_prov": { "type": "ESTIMATED", "basis": "Mid-interval value of the NBME 3.5-5.0 mmol/L range." } },
+      { "id": "serum_na_mmol_L", "label": "Serum sodium", "units": "mmol/L", "default": 140, "reference_range": [136, 146], "prov": "NBME_LABS",
+        "default_prov": { "type": "ESTIMATED", "basis": "Mid-interval value of the NBME 136-146 mmol/L range." } },
+      { "id": "serum_cl_mmol_L", "label": "Serum chloride", "units": "mmol/L", "default": 100, "reference_range": [95, 105], "prov": "NBME_LABS" },
+      { "id": "serum_hco3_mmol_L", "label": "Serum bicarbonate", "units": "mmol/L", "default": 25, "reference_range": [22, 28], "prov": "NBME_LABS" },
+      { "id": "serum_mg_mg_dL", "label": "Serum magnesium", "units": "mg/dL", "default": 1.8, "reference_range": [1.5, 2.0], "prov": "NBME_LABS" },
+      { "id": "serum_ca_mg_dL", "label": "Serum calcium", "units": "mg/dL", "default": 9.3, "reference_range": [8.4, 10.2], "prov": "NBME_LABS" },
+      { "id": "serum_urate_mg_dL", "label": "Serum uric acid", "units": "mg/dL", "default": 5.5, "reference_range": [3.0, 8.2], "si": "0.18-0.48 mmol/L", "prov": "NBME_LABS",
+        "default_prov": { "type": "ESTIMATED", "basis": "Chosen mid-interval and below the 6.8 mg/dL monosodium-urate saturation point so the healthy default twin is not primed for a gout trigger." },
+        "conversion": "umol/L = mg/dL x 59.48" },
+      { "id": "fasting_glucose_mg_dL", "label": "Fasting plasma glucose", "units": "mg/dL", "default": 90, "reference_range": [70, 100], "si": "3.8-5.6 mmol/L", "prov": "NBME_LABS" },
+      { "id": "hba1c_pct", "label": "HbA1c", "units": "%", "default": 5.3, "reference": "<=6% (<=42 mmol/mol)", "prov": "NBME_LABS" },
+      { "id": "albumin_g_dL", "label": "Serum albumin", "units": "g/dL", "default": 4.4, "reference_range": [3.5, 5.5], "prov": "NBME_LABS",
+        "used_for": "Plasma protein binding of losartan/E-3174 and of metoprolol's minor bound fraction; feeds the free-fraction correction in the PK layer." },
+      { "id": "hemoglobin_g_dL", "label": "Haemoglobin", "units": "g/dL", "default_male": 15.5, "default_female": 14.0, "reference_range_male": [13.5, 17.5], "reference_range_female": [12.0, 16.0], "prov": "NBME_LABS" },
+      { "id": "uacr_mg_g", "label": "Urine albumin-to-creatinine ratio", "units": "mg/g", "default": 10, "reference": "See comorbidity preset ckd / t2dm for KDIGO albuminuria categories", "prov": { "type": "ESTIMATED", "basis": "A normal UACR is conventionally <30 mg/g; 10 mg/g chosen as an unremarkable default. KDIGO category thresholds are carried on the CKD preset, not here." } },
+      { "id": "fev1_pct_predicted", "label": "FEV1 (% predicted)", "units": "%", "default": 100, "min": 20, "max": 130,
+        "prov": { "type": "ESTIMATED", "basis": "100% predicted is the definition of a normal spirometry result; used only as the substrate the beta-blocker bronchoconstriction channel acts on." } },
+      { "id": "alt_u_L", "label": "Alanine aminotransferase (ALT)", "units": "U/L", "default": 22, "reference_range": [10, 40], "prov": "NBME_LABS",
+        "added_for": "Agent C's rules reference lab key `alt_u_l`; exposed here so that trigger resolves.",
+        "default_prov": { "type": "ESTIMATED", "basis": "Mid-interval value of the NBME 10-40 U/L range." } },
+      { "id": "urine_calcium_mg_day", "label": "Urinary calcium excretion", "units": "mg/24 h", "default": 200, "reference_range": [100, 300], "prov": "NBME_LABS",
+        "added_for": "Agent C references lab key `labs.urine_calcium_mg_day` for the thiazide calcium-sparing effect (thiazides reduce urinary calcium — the basis of their use in hypercalciuric stone disease and their small bone-density benefit)." },
+      { "id": "serum_lithium_mmol_L", "label": "Serum lithium", "units": "mmol/L", "default": null, "status": "NOT_MODELLED_INTERNALLY",
+        "prov": { "type": "NOT_FOUND", "note": "Lithium is not one of the five modelled substances, so the twin has no lithium PK. Agent C's thiazide-lithium interaction rule needs this key to exist; it is exposed as a user-entered value only and the simulation must not claim to predict it." } }
+    ],
+
+    "genotypes": [
+      { "id": "cyp2d6_activity_score", "label": "CYP2D6 activity score", "type": "number", "default": 2.0,
+        "allowed": [0, 0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 3.0, 4.0],
+        "affects": ["metoprolol"], "prov": "CPIC_BB_2024" },
+      { "id": "cyp2c9_activity_score", "label": "CYP2C9 activity score", "type": "number", "default": 2.0,
+        "allowed": [0, 0.5, 1.0, 1.5, 2.0],
+        "affects": ["losartan"], "prov": "CPIC_FREQ_CYP2C9" },
+      { "id": "cyp3a_activity_multiplier", "label": "CYP3A4/5 relative activity", "type": "number", "default": 1.0, "min": 0.2, "max": 2.0,
+        "affects": ["amlodipine", "losartan (minor pathway)"],
+        "prov": { "type": "ESTIMATED", "basis": "No actionable CPIC-level CYP3A4/CYP3A5 genotype recommendation exists for amlodipine, so this is exposed as a free multiplier (default 1.0) for inhibitor/inducer scenarios rather than a genotype. Flagged for Agent C: do not treat this as a pharmacogenomic recommendation." } }
+    ],
+
+    "comorbidities": {
+      "type": "multi-select",
+      "values": "keys of comorbidity_presets",
+      "composition_rule": "See comorbidity_presets._composition_rule"
+    }
+  },
+
+  "derivation_pipeline": [
+    { "step": 1, "id": "height_m", "units": "m", "expr": "height_cm / 100", "prov": { "type": "DERIVED", "from": "unit conversion" } },
+    { "step": 2, "id": "bmi", "units": "kg/m^2", "expr": "weight_kg / (height_m * height_m)",
+      "prov": { "type": "DERIVED", "from": "standard BMI definition" },
+      "cutpoints_international": { "underweight": "<18.5", "normal": "18.5-24.9", "overweight": "25.0-29.9", "obese": ">=30", "prov": "WHO_ASIAN_BMI" },
+      "cutpoints_asian_public_health_action": { "increased_risk": ">=23", "high_risk": ">=27.5", "prov": "WHO_ASIAN_BMI" },
+      "ui_rule": "If ancestry_group is 'Central/South Asian' or 'East Asian', display the 23 / 27.5 trigger points alongside the international cut-offs. Do NOT silently substitute one set for the other.",
+      "note_2025": "The Lancet Diabetes & Endocrinology Commission (Jan 2025) recommends that BMI alone should no longer be treated as a diagnosis of obesity; adiposity should be confirmed anthropometrically or by direct measurement, and 'clinical obesity' additionally requires organ dysfunction. PilSim uses BMI only as a scaling covariate and labels the category as 'BMI category', never as a diagnosis of obesity.",
+      "note_2025_prov": "LANCET_OBESITY_2025" },
+    { "step": 3, "id": "bsa_m2", "units": "m^2", "expr": "0.007184 * Math.pow(height_cm, 0.725) * Math.pow(weight_kg, 0.425)",
+      "equation_name": "Du Bois & Du Bois (1916)", "prov": "STATPEARLS_BSA",
+      "cross_check": "Du Bois at ICRP reference male (176 cm, 73 kg) yields 1.885 m^2 vs ICRP 89 Table 2.9 stated 1.90 m^2; at reference female (163 cm, 60 kg) yields 1.653 m^2 vs stated 1.66 m^2.",
+      "cross_check_prov": "ICRP89" },
+    { "step": 4, "id": "bsa_mosteller_m2", "units": "m^2", "expr": "Math.sqrt(height_cm * weight_kg / 3600)",
+      "prov": "STATPEARLS_BSA", "use": "Reported alongside Du Bois for transparency; Du Bois is the value the pipeline consumes." },
+    { "step": 5, "id": "ibw_kg", "units": "kg",
+      "expr": "(sex === 'male' ? 50 : 45) + 2.3 * ((height_cm / 2.54) - 60)",
+      "equation_name": "Devine (1974)", "prov": "URI_PKCALC",
+      "caveat": "Devine's original female intercept is frequently quoted as 45.5 kg rather than 45 kg. The 0.5 kg difference is immaterial at the resolution of this model; the verified source above states 45." },
+    { "step": 6, "id": "lbw_kg", "units": "kg",
+      "expr": "sex === 'male' ? (9270 * weight_kg) / (6680 + 216 * bmi) : (9270 * weight_kg) / (8780 + 244 * bmi)",
+      "equation_name": "Janmahasatian (2005) lean body weight / fat-free mass", "prov": "JANMAHASATIAN2005",
+      "why_this_one": "Supersedes the James (1976) LBW formula, which is non-monotonic and returns falling LBW at high BMI. Janmahasatian was derived specifically to behave at extremes of size and is the LBW descriptor recommended for scaling drug doses." },
+    { "step": 7, "id": "fat_mass_kg", "units": "kg", "expr": "weight_kg - lbw_kg", "prov": { "type": "DERIVED", "from": "weight_kg and lbw_kg" } },
+    { "step": 8, "id": "body_fat_pct", "units": "%", "expr": "100 * fat_mass_kg / weight_kg", "prov": { "type": "DERIVED", "from": "fat_mass_kg and weight_kg" } },
+    { "step": 9, "id": "adjbw_kg", "units": "kg", "expr": "ibw_kg + 0.4 * (weight_kg - ibw_kg)",
+      "equation_name": "Adjusted body weight (correction factor 0.4)", "prov": "URI_PKCALC",
+      "use": "Only for the Cockcroft-Gault comparison value and for label-style dose caps in obesity; the mechanistic PK layer uses lbw_kg / weight_kg allometry instead." },
+    { "step": 10, "id": "tbw_L", "units": "L",
+      "expr": "sex === 'male' ? (2.447 - 0.09516 * age_years + 0.1074 * height_cm + 0.3362 * weight_kg) : (-2.097 + 0.1069 * height_cm + 0.2466 * weight_kg)",
+      "equation_name": "Watson (1980) total body water", "prov": "WATSON1980",
+      "cross_check": "At the ICRP reference male (45 y, 176 cm, 73 kg) Watson gives 41.5 L, i.e. 57% of body mass — consistent with the textbook '60% of body weight, 42 L in a 70 kg man'.",
+      "cross_check_prov": "STATPEARLS_WATER" },
+    { "step": 11, "id": "ecf_L", "units": "L", "expr": "0.414 * tbw_L + 0.306",
+      "equation_name": "Forbes ECF-from-TBW regression as reproduced in ICRP 89 para 102, p.74", "prov": "ICRP89",
+      "prov_stated": "ECF(l) = 0.414 x TBW(l) + 0.306; 'The regression was based on combined data for males and females. No significant difference between males and females was found.'" },
+    { "step": 12, "id": "icf_L", "units": "L", "expr": "tbw_L - ecf_L", "prov": { "type": "DERIVED", "from": "tbw_L and ecf_L" } },
+    { "step": 13, "id": "blood_volume_L", "units": "L",
+      "expr": "sex === 'male' ? (0.3669 * Math.pow(height_m, 3) + 0.03219 * weight_kg + 0.6041) : (0.3561 * Math.pow(height_m, 3) + 0.03308 * weight_kg + 0.1833)",
+      "equation_name": "Nadler (1962)", "prov": "NADLER1962",
+      "cross_check": "At the ICRP reference male (1.76 m, 73 kg) Nadler gives 5.00 L vs ICRP 89 stated total blood volume 5.3 L; at the reference female (1.63 m, 60 kg) Nadler gives 3.71 L vs ICRP 89 stated 3.9 L. Nadler runs ~5% low against ICRP; acceptable and documented.",
+      "cross_check_prov": "ICRP89" },
+    { "step": 14, "id": "plasma_volume_L", "units": "L", "expr": "blood_volume_L * (1 - hematocrit_frac)",
+      "prov": { "type": "DERIVED", "from": "blood_volume_L (NADLER1962) and hematocrit_frac (NBME_LABS)" },
+      "cross_check": "Reference male: 5.00 L x (1 - 0.47) = 2.65 L = 36 mL/kg, inside the NBME plasma-volume interval 25-43 mL/kg (male). Reference female: 3.71 x (1-0.41) = 2.19 L = 36 mL/kg, inside the NBME 28-45 mL/kg (female). ICRP 89 states plasma volume 3000 mL (male) / 2400 mL (female).",
+      "cross_check_prov": ["NBME_LABS", "ICRP89"] },
+    { "step": 15, "id": "egfr_ckdepi2021", "units": "mL/min/1.73m^2",
+      "expr": "142 * Math.pow(Math.min(scr_mg_dL / (sex === 'female' ? 0.7 : 0.9), 1), (sex === 'female' ? -0.241 : -0.302)) * Math.pow(Math.max(scr_mg_dL / (sex === 'female' ? 0.7 : 0.9), 1), -1.200) * Math.pow(0.9938, age_years) * (sex === 'female' ? 1.012 : 1)",
+      "equation_name": "2021 CKD-EPI creatinine equation (race-free)", "prov": "NIDDK_CKDEPI2021",
+      "prov_stated": "eGFR = 142 x min(SCr/k,1)^a x max(SCr/k,1)^-1.200 x 0.9938^Age x 1.012 [if female]; female k=0.7 a=-0.241; male k=0.9 a=-0.302",
+      "revision_note": "THIS IS THE CURRENT EQUATION. It replaced the 2009 CKD-EPI equation (which carried a Black-race coefficient) and the older MDRD equation. Any implementation carrying a race term is out of date and must not be shipped.",
+      "requires": "Serum creatinine must be from an IDMS-traceable, standardised assay for this equation to be valid." },
+    { "step": 16, "id": "egfr_absolute_mL_min", "units": "mL/min", "expr": "egfr_ckdepi2021 * bsa_m2 / 1.73",
+      "prov": { "type": "DERIVED", "from": "Removing the 1.73 m^2 body-surface indexing that eGFR is reported with, so the value is an individual whole-body filtration rate. The NKF workgroup consensus explicitly recommends drug-dosing decisions use the 2021 CKD-EPI eGFR 'with results adjusted for body surface area'." },
+      "prov_recommendation": "NKF_RACEFREE_MEDS",
+      "use": "THIS, not the indexed eGFR, is what the PK layer must use to scale renal clearance. Using the 1.73-indexed value for a 110 kg patient under-predicts renal clearance by roughly 20%." },
+    { "step": 17, "id": "crcl_cockcroft_gault_mL_min", "units": "mL/min",
+      "expr": "((140 - age_years) * (weight_kg < ibw_kg ? weight_kg : (bmi >= 30 ? adjbw_kg : ibw_kg)) / (72 * scr_mg_dL)) * (sex === 'female' ? 0.85 : 1)",
+      "equation_name": "Cockcroft-Gault (1976)", "prov": "URI_PKCALC",
+      "status": "LEGACY — DISPLAY ONLY",
+      "why_kept": "Almost every existing drug label expresses renal dose adjustment in Cockcroft-Gault CrCl bands, so the twin computes it in order to check label-based dose caps. It is NOT the model's renal-function driver.",
+      "revision_note": "The FDA's 2024 renal-impairment guidance and the 2025 NKF workgroup consensus both recommend moving from Cockcroft-Gault eCrCl to the BSA-adjusted 2021 CKD-EPI eGFR for medication decisions. PilSim follows that: egfr_absolute_mL_min drives the model, crcl_cockcroft_gault is shown for label cross-reference only.",
+      "revision_note_prov": "NKF_RACEFREE_MEDS" },
+    { "step": 18, "id": "ckd_stage", "units": "category",
+      "expr": "egfr_ckdepi2021 >= 90 ? 'G1' : egfr_ckdepi2021 >= 60 ? 'G2' : egfr_ckdepi2021 >= 45 ? 'G3a' : egfr_ckdepi2021 >= 30 ? 'G3b' : egfr_ckdepi2021 >= 15 ? 'G4' : 'G5'",
+      "prov": "SEE comorbidity_presets.ckd.gfr_categories",
+      "note": "Category boundaries are carried and cited on the CKD preset so that Agent C's rules and this pipeline share one definition." },
+    { "step": 19, "id": "cardiac_output_ref_L_min", "units": "L/min",
+      "expr": "(sex === 'male' ? 6.5 : 5.9) * (bsa_m2 / (sex === 'male' ? 1.90 : 1.66))",
+      "prov": "ICRP89",
+      "prov_stated": "ICRP 89 section 7.5 p.139: adult cardiac output 6.5 l/min (male) / 5.9 l/min (female). ICRP 89 Table 2.9 p.19: BSA 1.90 m^2 (male) / 1.66 m^2 (female).",
+      "scaling_rationale": "Scaling the ICRP reference cardiac output by the ratio of the individual's BSA to the reference BSA holds cardiac index constant, which is the conventional way cardiac output is normalised. Implied reference cardiac index: 3.42 L/min/m^2 (male), 3.55 L/min/m^2 (female) — both inside the usual 2.5-4.0 L/min/m^2 band.",
+      "scaling_rationale_prov": { "type": "ESTIMATED", "basis": "BSA-proportional scaling of CO is standard practice (it is the definition of cardiac index); ICRP 89 does not itself publish a scaling rule." } },
+    { "step": 20, "id": "cardiac_output_L_min", "units": "L/min",
+      "expr": "cardiac_output_ref_L_min * comorbidity_multiplier('cardiac_output')",
+      "reference_range": [4, 8], "prov": "SVR_REF",
+      "note": "comorbidity_multiplier() is the composition function defined in comorbidity_presets._composition_rule." },
+    { "step": 21, "id": "cardiac_index_L_min_m2", "units": "L/min/m^2", "expr": "cardiac_output_L_min / bsa_m2", "prov": { "type": "DERIVED", "from": "cardiac_output_L_min and bsa_m2" } },
+    { "step": 22, "id": "stroke_volume_mL", "units": "mL", "expr": "1000 * cardiac_output_L_min / heart_rate_bpm",
+      "reference_range": [60, 100], "prov": "STATPEARLS_SV",
+      "note": "At baseline SV is solved from CO and HR rather than entered, so the twin is internally consistent by construction." },
+    { "step": 23, "id": "map_mmHg", "units": "mmHg", "expr": "dbp_mmHg + (sbp_mmHg - dbp_mmHg) / 3",
+      "prov": { "type": "DERIVED", "from": "The conventional MAP approximation MAP = DBP + PP/3, i.e. a 1:2 systole:diastole time weighting at normal resting heart rate. It is an approximation and degrades at high heart rate; documented in research/02-VIRTUAL-HUMAN.md." } },
+    { "step": 24, "id": "pulse_pressure_mmHg", "units": "mmHg", "expr": "sbp_mmHg - dbp_mmHg", "prov": { "type": "DERIVED", "from": "definition" } },
+    { "step": 25, "id": "cvp_mmHg", "units": "mmHg", "expr": "5",
+      "prov": { "type": "ESTIMATED", "basis": "Set to 5 mmHg. StatPearls quotes 8-12 mmHg but that is a clinically-targeted resuscitation range, not a healthy resting normal; awake healthy subjects are commonly reported around 2-3 mmHg. 5 mmHg is the midpoint. SVR is weakly sensitive to this choice: +/-3 mmHg moves SVR by about 4%." },
+      "prov_context": "STATPEARLS_CVP" },
+    { "step": 26, "id": "svr_dyn_s_cm5", "units": "dyn.s.cm^-5", "expr": "80 * (map_mmHg - cvp_mmHg) / cardiac_output_L_min",
+      "equation_name": "Systemic vascular resistance", "prov": "SVR_FORMULA",
+      "reference_range": [800, 1200], "reference_range_prov": "SVR_REF",
+      "role": "KEYSTONE OF THE MODEL. At baseline SVR is *solved* so that the twin reproduces the blood pressure the user entered. During simulation SVR becomes a state variable that drugs act on, and blood pressure becomes the output. See research/02-VIRTUAL-HUMAN.md section 'Calibrate-then-run'." },
+    { "step": 27, "id": "arterial_compliance_mL_mmHg", "units": "mL/mmHg", "expr": "stroke_volume_mL / pulse_pressure_mmHg",
+      "equation_name": "Stroke-volume-to-pulse-pressure ratio (SV/PP) estimate of total arterial compliance",
+      "prov": "CHEMLA1998",
+      "reference_mean": 1.46, "reference_sd": 0.69, "reference_range": [0.34, 2.80],
+      "role": "Also solved at baseline. Falls with age and with arterial stiffening; is what makes pulse pressure widen in the elderly preset." },
+    { "step": 28, "id": "renal_blood_flow_mL_min", "units": "mL/min",
+      "expr": "1000 * cardiac_output_L_min * (sex === 'male' ? 0.19 : 0.17) * comorbidity_multiplier('renal_blood_flow')",
+      "prov": "ICRP89",
+      "prov_stated": "ICRP 89 section 7.7.2 p.142, 'Reference values for regional blood volumes and blood flow rates in adults': kidneys 19% of cardiac output (male), 17% (female).",
+      "cross_check": "Reference male: 6.5 L/min x 0.19 = 1235 mL/min, consistent with 'The kidneys together receive roughly 20-25% of cardiac output, amounting to 1.2-1.3 L/min'.",
+      "cross_check_prov": "STATPEARLS_RBF" },
+    { "step": 29, "id": "renal_plasma_flow_mL_min", "units": "mL/min", "expr": "renal_blood_flow_mL_min * (1 - hematocrit_frac)",
+      "prov": { "type": "DERIVED", "from": "renal_blood_flow_mL_min and hematocrit_frac" },
+      "cross_check": "ICRP 89 para 380 p.159: 'Assuming the rate of plasma flow (RPF) through the kidneys of the young adult male is about 700 ml/min'. Model gives 1235 x 0.53 = 655 mL/min, consistent with the 600-650 mL/min quoted in StatPearls.",
+      "cross_check_prov": ["ICRP89", "STATPEARLS_RBF"] },
+    { "step": 30, "id": "filtration_fraction", "units": "dimensionless", "expr": "egfr_absolute_mL_min / renal_plasma_flow_mL_min",
+      "prov": "ICRP89",
+      "prov_stated": "ICRP 89 para 380 p.159: 'In a middle-aged adult male, the glomerular filration rate (GFR) averages about 125 ml/min ... approximately 18% of the plasma entering the kidneys is filtered into the glomeruli. This value (0.18) is referred to as the filtration fraction (FF): FF = GFR/RPF.'",
+      "physiological_range": [0.15, 0.25],
+      "use": "Rises when the efferent arteriole constricts (high angiotensin II) and falls on ACE inhibitor / ARB — this is the mechanistic hook for the 'acute creatinine bump' behaviour the animation should show." },
+    { "step": 31, "id": "hepatic_blood_flow_L_min", "units": "L/min",
+      "expr": "cardiac_output_L_min * (sex === 'male' ? 0.255 : 0.270) * comorbidity_multiplier('hepatic_blood_flow')",
+      "prov": "ICRP89",
+      "prov_stated": "ICRP 89 section 7.7.2 p.142: liver total blood flow 25.5% of cardiac output (male), 27.0% (female), of which 6.5% is hepatic arterial and the remainder portal.",
+      "cross_check": "Reference male: 6.5 x 0.255 = 1.66 L/min total hepatic blood flow.",
+      "use": "Scales the hepatic extraction term for metoprolol (high first-pass) and amlodipine." },
+    { "step": 32, "id": "liver_mass_g", "units": "g", "expr": "(sex === 'male' ? 1800 : 1400) * (bsa_m2 / (sex === 'male' ? 1.90 : 1.66))",
+      "prov": "ICRP89", "prov_stated": "ICRP 89 Table 2.8 pp.18-19: liver 1800 g (adult male), 1400 g (adult female).",
+      "scaling_prov": { "type": "ESTIMATED", "basis": "Liver mass scaled proportionally to BSA, the same convention used for cardiac output above; ICRP 89 publishes only the reference-individual mass." } },
+    { "step": 33, "id": "kidney_mass_g", "units": "g", "expr": "(sex === 'male' ? 310 : 275) * (bsa_m2 / (sex === 'male' ? 1.90 : 1.66))",
+      "prov": "ICRP89", "prov_stated": "ICRP 89 Table 2.8: kidneys (2) 310 g (male), 275 g (female)." },
+    { "step": 34, "id": "heart_mass_g", "units": "g", "expr": "(sex === 'male' ? 330 : 250) * (bsa_m2 / (sex === 'male' ? 1.90 : 1.66))",
+      "prov": "ICRP89", "prov_stated": "ICRP 89 Table 2.8: heart, tissue only 330 g (male), 250 g (female); with blood 840 g / 620 g." },
+    { "step": 35, "id": "cyp2d6_phenotype", "units": "category",
+      "expr": "cyp2d6_activity_score === null ? 'Indeterminate' : cyp2d6_activity_score > 2.25 ? 'Ultrarapid' : cyp2d6_activity_score >= 1.25 ? 'Normal' : cyp2d6_activity_score > 0 ? 'Intermediate' : 'Poor'",
+      "prov": "CPIC_BB_2024",
+      "prov_stated": "CPIC 2024 Table 1: ultrarapid metabolizer >2.25; normal metabolizer 1.25 <= x <= 2.25; intermediate metabolizer 0 < x < 1.25; poor metabolizer 0.",
+      "revision_note": "These bins reflect the 2019 CYP2D6 activity-score consensus. Older material places activity score 1.0 in the NORMAL bin and assigns CYP2D6*10 an activity value of 0.5; the current standard puts AS 1.0 in INTERMEDIATE and gives *10 a value of 0.25. An implementation using the old bins will misclassify a large share of Central/South Asian and East Asian subjects." },
+    { "step": 36, "id": "cyp2d6_pathway_multiplier", "units": "dimensionless",
+      "expr": "cyp2d6_phenotype === 'Poor' ? 0.0 : cyp2d6_phenotype === 'Intermediate' ? 0.5 : cyp2d6_phenotype === 'Ultrarapid' ? 1.6 : 1.0",
+      "prov": { "type": "ESTIMATED", "basis": "Calibrated so that, with metoprolol's CYP2D6-mediated fraction f_CYP2D6 = 0.80, a poor metabolizer's total clearance falls to 0.20 of normal and AUC rises 5-fold, matching the observed ~5x exposure increase. Intermediate (0.5) yields a 1.67-fold AUC increase, consistent with CPIC's statement that intermediate-metabolizer effects are 'smaller in magnitude'. The ultrarapid value 1.6 is a pure estimate — CPIC makes no recommendation for ultrarapid metabolizers because of insufficient evidence." },
+      "prov_anchor": ["RUDESHEIM2020", "CPIC_BB_2024"],
+      "usage": "CL_total = CL_nonCYP2D6 + f_CYP2D6 * CL_ref * cyp2d6_pathway_multiplier. Agent B supplies f_CYP2D6 per substance." },
+    { "step": 37, "id": "cyp2c9_phenotype", "units": "category",
+      "expr": "cyp2c9_activity_score === 2 ? 'Normal' : cyp2c9_activity_score >= 1 ? 'Intermediate' : 'Poor'",
+      "prov": "CPIC_FREQ_CYP2C9",
+      "prov_stated": "CPIC CYP2C9 phenotype bins: activity score 2 = normal metabolizer; 1 or 1.5 = intermediate metabolizer; 0 or 0.5 = poor metabolizer." },
+    { "step": 38, "id": "cyp2c9_pathway_multiplier", "units": "dimensionless", "expr": "cyp2c9_activity_score / 2",
+      "prov": { "type": "ESTIMATED", "basis": "Linear in activity score by construction — the activity-score system is itself defined as an additive measure of enzyme function, so AS/2 is the natural normalisation. See losartan calibration in pharmacogenomic_presets.CYP2C9.model_binding for how well this reproduces the observed E-3174 data, and where it does not." } },
+    { "step": 39, "id": "raas_activity", "units": "relative (1.0 = untreated baseline)", "expr": "1.0 * comorbidity_multiplier('raas_activity')",
+      "prov": { "type": "ESTIMATED", "basis": "A dimensionless index, not a measured quantity. It is the model's single scalar for renin-angiotensin-aldosterone drive, normalised to 1.0 in the untreated healthy twin. It is what lisinopril and losartan suppress and what a fall in plasma volume raises (the diuretic counter-regulation loop). Its observable correlate is plasma renin activity." } },
+    { "step": 40, "id": "plasma_renin_activity_ng_mL_h", "units": "ng/mL/h",
+      "expr": "(age_years < 40 ? 1.9 : 1.0) * raas_activity",
+      "prov": "UIOWA_PRA",
+      "prov_stated": "Na-replete, upright: 18-39 years <0.6-4.3 ng/mL/hour; >=40 years <0.6-3.0 ng/mL/hour.",
+      "default_prov": { "type": "ESTIMATED", "basis": "Baseline point values 1.9 (age<40) and 1.0 (age>=40) chosen inside the cited sodium-replete upright intervals; used as the display correlate of raas_activity." } },
+    { "step": 41, "id": "sympathetic_tone", "units": "relative (1.0 = untreated baseline)", "expr": "1.0 * comorbidity_multiplier('sympathetic_tone')",
+      "prov": { "type": "ESTIMATED", "basis": "Dimensionless index of beta-adrenergic drive to the sinus node and myocardium, normalised to 1.0. It is the substrate metoprolol antagonises and the variable the baroreflex raises when blood pressure falls." } },
+    { "step": 42, "id": "baroreflex_gain_bpm_per_mmHg", "units": "bpm/mmHg",
+      "expr": "-(60000 / Math.pow(60000 / heart_rate_bpm, 2)) * 15 * (age_years <= 35 ? 1.0 : age_years <= 60 ? 0.67 : 0.40)",
+      "prov": ["BRS_NORMALS", "MONAHAN2001_BRS"],
+      "derivation": "Cardiovagal baroreflex sensitivity is published as dRR/dSBP in ms/mmHg (~15 ms/mmHg by the phenylephrine method in normals). Converting to heart-rate units: HR = 60000/RR, so dHR/dSBP = -(60000/RR^2) x dRR/dSBP. At RR = 857 ms (HR 70) this gives -1.23 bpm/mmHg. The age factors 1.00 / 0.67 / 0.40 encode the reported ~33% reduction in middle-aged and ~60% reduction in older sedentary men relative to young.",
+      "physiological_note": "Sign is negative: a rise in pressure lowers heart rate. This term is what stops every antihypertensive in the model from producing an unopposed monotonic pressure fall — without it the simulation is not biologically plausible over hours." },
+    { "step": 43, "id": "allometric_cl_scalar", "units": "dimensionless", "expr": "Math.pow(weight_kg / 70, 0.75)",
+      "prov": "GERMOVSEK2017",
+      "prov_stated": "'allometric scaling with a fixed exponent of 0.75 is often applied' for clearance; 'the theory based allometric exponent for clearance is 3/4'.",
+      "note": "70 kg is the conventional standard individual. Applies to non-renal clearance; renal clearance should instead be scaled by egfr_absolute_mL_min." },
+    { "step": 44, "id": "allometric_v_scalar", "units": "dimensionless", "expr": "weight_kg / 70",
+      "prov": { "type": "ESTIMATED", "basis": "Exponent 1.0 for volume of distribution is the companion convention to the 3/4 exponent for clearance in theory-based allometry; it is standard practice rather than a separately measured quantity." },
+      "note": "For hydrophilic drugs (lisinopril) prefer scaling on lbw_kg or tbw_L rather than total weight; for lipophilic drugs (amlodipine, metoprolol) total weight is the better anchor. Agent B should specify the anchor per substance." }
+  ],
+
+  "state_variables": {
+    "_note": "The simulation integrates or recomputes these each time step. `class` tells the engine what kind of variable it is; `visual_hint` is a suggestion to Agent F, not a binding decision.",
+    "hemodynamic": [
+      { "id": "heart_rate_bpm", "units": "bpm", "class": "dynamic", "physiological_range": [30, 200], "healthy_reference": [60, 100], "hard_clamp": [25, 220], "prov": "STATPEARLS_CO",
+        "moved_by": ["metoprolol (direct, down)", "amlodipine (reflex, up)", "hydrochlorothiazide (reflex, up)", "baroreflex (bidirectional)"], "visual_hint": "beat rate of the heart animation" },
+      { "id": "stroke_volume_mL", "units": "mL", "class": "dynamic", "physiological_range": [20, 150], "healthy_reference": [60, 100], "prov": "STATPEARLS_SV",
+        "moved_by": ["metoprolol (negative inotropy, down)", "hydrochlorothiazide (preload, down)", "lisinopril/losartan (afterload, up slightly)"], "visual_hint": "amplitude of ventricular contraction" },
+      { "id": "cardiac_output_L_min", "units": "L/min", "class": "derived", "expr": "heart_rate_bpm * stroke_volume_mL / 1000", "physiological_range": [2, 12], "healthy_reference": [4, 8], "prov": "SVR_REF",
+        "visual_hint": "flow-particle density in the aortic outflow" },
+      { "id": "svr_dyn_s_cm5", "units": "dyn.s.cm^-5", "class": "dynamic", "physiological_range": [400, 2500], "healthy_reference": [800, 1200], "prov": "SVR_REF",
+        "moved_by": ["amlodipine (primary, down)", "lisinopril (down via AngII)", "losartan (down via AT1)", "baroreflex (up)"], "visual_hint": "arteriolar lumen diameter in the vessel cross-section inset" },
+      { "id": "arterial_compliance_mL_mmHg", "units": "mL/mmHg", "class": "dynamic", "physiological_range": [0.3, 3.0], "healthy_reference": [0.77, 2.15], "prov": "CHEMLA1998",
+        "healthy_reference_note": "mean 1.46 +/- 1 SD 0.69",
+        "moved_by": ["ageing preset (down)", "amlodipine (up, modest)"], "visual_hint": "wall thickness / pulsation of the large-artery segment" },
+      { "id": "map_mmHg", "units": "mmHg", "class": "derived", "expr": "cvp_mmHg + svr_dyn_s_cm5 * cardiac_output_L_min / 80", "physiological_range": [40, 180], "healthy_reference": [70, 100], "prov": "SVR_FORMULA" },
+      { "id": "pulse_pressure_mmHg", "units": "mmHg", "class": "derived", "expr": "stroke_volume_mL / arterial_compliance_mL_mmHg", "physiological_range": [15, 120], "healthy_reference": [30, 50], "prov": "CHEMLA1998" },
+      { "id": "sbp_mmHg", "units": "mmHg", "class": "derived", "expr": "map_mmHg + (2/3) * pulse_pressure_mmHg", "physiological_range": [60, 260], "hard_clamp": [40, 300], "prov": { "type": "DERIVED", "from": "Algebraic inversion of MAP = DBP + PP/3 together with PP = SBP - DBP." } },
+      { "id": "dbp_mmHg", "units": "mmHg", "class": "derived", "expr": "map_mmHg - (1/3) * pulse_pressure_mmHg", "physiological_range": [30, 150], "hard_clamp": [20, 180], "prov": { "type": "DERIVED", "from": "Same inversion as sbp_mmHg." } },
+      { "id": "cvp_mmHg", "units": "mmHg", "class": "dynamic", "physiological_range": [0, 20], "healthy_reference": [2, 8], "prov": "STATPEARLS_CVP", "prov_caveat": "See derivation_pipeline step 25 for why 5 mmHg is used rather than the quoted 8-12." },
+      { "id": "lvef_pct", "units": "%", "class": "dynamic", "physiological_range": [10, 75], "healthy_reference": [55, 70],
+        "prov": { "type": "ESTIMATED", "basis": "55-70% is the conventional normal LVEF band; carried as a display/animation variable and as the definitional axis of the HFrEF preset rather than as a driver of the pressure equations." } },
+      { "id": "contractility_index", "units": "relative (1.0 = baseline)", "class": "dynamic", "physiological_range": [0.3, 2.0],
+        "prov": { "type": "ESTIMATED", "basis": "Dimensionless multiplier on stroke volume representing inotropic state. 1.0 by definition at baseline. It is the channel through which metoprolol's negative inotropy and the HFrEF preset act." } },
+      { "id": "orthostatic_sbp_drop_mmHg", "units": "mmHg", "class": "derived", "threshold_positive": 20, "prov": "AAFP_OH",
+        "prov_stated": "systolic BP drops by >=20 mm Hg or diastolic BP drops by >=10 mm Hg within 3 minutes of standing",
+        "visual_hint": "dizziness / fall-risk warning channel on the figure" }
+    ],
+    "volume_and_body_composition": [
+      { "id": "plasma_volume_L", "units": "L", "class": "dynamic", "physiological_range": [1.2, 6.0], "healthy_reference_mL_per_kg_male": [25, 43], "healthy_reference_mL_per_kg_female": [28, 45], "prov": "NBME_LABS",
+        "moved_by": ["hydrochlorothiazide (primary, down)", "lisinopril/losartan (down, modest, via aldosterone)", "pregnancy preset (up)", "HFrEF preset (up)"], "visual_hint": "fill level of the vascular compartment" },
+      { "id": "blood_volume_L", "units": "L", "class": "derived", "expr": "plasma_volume_L / (1 - hematocrit_frac)", "physiological_range": [2.0, 8.0], "prov": "NADLER1962" },
+      { "id": "ecf_L", "units": "L", "class": "dynamic", "physiological_range": [8, 30], "prov": "ICRP89", "moved_by": ["diuresis", "sodium balance"] },
+      { "id": "tbw_L", "units": "L", "class": "dynamic", "physiological_range": [20, 60], "prov": "WATSON1980" },
+      { "id": "lbw_kg", "units": "kg", "class": "static", "prov": "JANMAHASATIAN2005" },
+      { "id": "fat_mass_kg", "units": "kg", "class": "static", "prov": { "type": "DERIVED", "from": "weight_kg - lbw_kg" } },
+      { "id": "hematocrit_frac", "units": "fraction", "class": "dynamic", "physiological_range": [0.15, 0.65], "prov": "NBME_LABS",
+        "moved_by": ["diuretic-induced haemoconcentration (up)", "CKD preset (down)", "pregnancy preset (down, dilutional)"] }
+    ],
+    "renal": [
+      { "id": "egfr_ckdepi2021", "units": "mL/min/1.73m^2", "class": "dynamic", "physiological_range": [3, 160], "healthy_reference": [90, 130], "prov": "NIDDK_CKDEPI2021",
+        "moved_by": ["lisinopril/losartan (acute fall via efferent dilation, then renoprotection)", "hydrochlorothiazide (fall via volume depletion)", "CKD/diabetes/ageing presets"], "visual_hint": "glomerular filtration flux animation" },
+      { "id": "egfr_absolute_mL_min", "units": "mL/min", "class": "derived", "expr": "egfr_ckdepi2021 * bsa_m2 / 1.73", "prov": "NKF_RACEFREE_MEDS",
+        "role": "The renal-clearance scalar for the PK layer." },
+      { "id": "renal_blood_flow_mL_min", "units": "mL/min", "class": "dynamic", "physiological_range": [200, 1800], "healthy_reference": [1000, 1300], "prov": ["ICRP89", "STATPEARLS_RBF"], "visual_hint": "perfusion colour of the renal cortex" },
+      { "id": "filtration_fraction", "units": "dimensionless", "class": "derived", "physiological_range": [0.08, 0.30], "healthy_reference": [0.15, 0.22], "prov": "ICRP89",
+        "role": "Falls on ACE inhibitor/ARB because the efferent arteriole dilates; this is the mechanistic explanation of the expected early creatinine rise." },
+      { "id": "distal_na_delivery_index", "units": "relative (1.0 = baseline)", "class": "dynamic", "physiological_range": [0.2, 3.0],
+        "prov": { "type": "ESTIMATED", "basis": "Dimensionless index of sodium arriving at the distal convoluted tubule. It is the target hydrochlorothiazide blocks and the substrate that determines both natriuresis and the distal K+/H+ secretion that produces hypokalaemia. There is no single published normal value for it, so it is normalised to 1.0." },
+        "visual_hint": "the DCT segment highlight in the nephron animation — this is the variable that makes HCTZ's kidney animation mean something" },
+      { "id": "urine_output_mL_day", "units": "mL/day", "class": "dynamic", "physiological_range": [300, 4000], "healthy_reference": [800, 2000],
+        "prov": { "type": "ESTIMATED", "basis": "800-2000 mL/day is the conventional normal adult urine output; carried as a display and animation variable." } },
+      { "id": "uacr_mg_g", "units": "mg/g", "class": "dynamic", "physiological_range": [1, 5000], "prov": "SEE comorbidity_presets.ckd.albuminuria_categories" }
+    ],
+    "electrolytes_and_metabolic": [
+      { "id": "serum_k_mmol_L", "units": "mmol/L", "class": "dynamic", "physiological_range": [2.0, 8.0], "healthy_reference": [3.5, 5.0], "hard_clamp": [1.5, 9.0], "prov": "NBME_LABS",
+        "moved_by": ["lisinopril (up, aldosterone suppression)", "losartan (up)", "hydrochlorothiazide (down, distal K+ wasting)", "CKD preset (up)"],
+        "clinical_flags": { "hypokalaemia": "<3.5", "hyperkalaemia": ">5.0", "severe_hyperkalaemia": ">6.0" },
+        "clinical_flags_prov": { "type": "DERIVED", "from": "The NBME reference interval bounds 3.5-5.0 mmol/L. The >6.0 severe threshold is ESTIMATED — Agent C owns the actionable thresholds; this is a display flag only." },
+        "visual_hint": "the single most important adverse-effect readout in this drug set — dedicate a persistent gauge to it" },
+      { "id": "serum_na_mmol_L", "units": "mmol/L", "class": "dynamic", "physiological_range": [110, 165], "healthy_reference": [136, 146], "prov": "NBME_LABS",
+        "moved_by": ["hydrochlorothiazide (down — thiazide-induced hyponatraemia)", "HFrEF preset (down)"] },
+      { "id": "serum_urate_mg_dL", "units": "mg/dL", "class": "dynamic", "physiological_range": [1.0, 15.0], "healthy_reference": [3.0, 8.2], "prov": "NBME_LABS",
+        "moved_by": ["hydrochlorothiazide (UP — the gout reject case)", "losartan (DOWN — uricosuric via URAT1)"],
+        "note": "This variable is the reason losartan and HCTZ are both in the set: they move it in opposite directions, which is a visually and clinically legible contrast. Agent B/C own the magnitudes." },
+      { "id": "serum_hco3_mmol_L", "units": "mmol/L", "class": "dynamic", "healthy_reference": [22, 28], "prov": "NBME_LABS", "moved_by": ["hydrochlorothiazide (up — contraction alkalosis)", "CKD preset (down)"] },
+      { "id": "serum_mg_mg_dL", "units": "mg/dL", "class": "dynamic", "healthy_reference": [1.5, 2.0], "prov": "NBME_LABS", "moved_by": ["hydrochlorothiazide (down)"] },
+      { "id": "serum_ca_mg_dL", "units": "mg/dL", "class": "dynamic", "healthy_reference": [8.4, 10.2], "prov": "NBME_LABS", "moved_by": ["hydrochlorothiazide (up — thiazides are calcium-sparing)"] },
+      { "id": "fasting_glucose_mg_dL", "units": "mg/dL", "class": "dynamic", "physiological_range": [40, 500], "healthy_reference": [70, 100], "prov": "NBME_LABS", "moved_by": ["hydrochlorothiazide (up, small)", "metoprolol (up, small; also masks hypoglycaemia symptoms)"] },
+      { "id": "hba1c_pct", "units": "%", "class": "slow", "physiological_range": [4.0, 15.0], "healthy_reference": "<=6.0", "prov": "NBME_LABS",
+        "note": "Changes on a ~3-month time constant; only meaningful on the long-horizon (5-year prognosis) run, not the acute run." },
+      { "id": "ldl_mg_dL", "units": "mg/dL", "class": "slow", "healthy_reference": "<160", "prov": "NBME_LABS", "use": "long-horizon cardiovascular risk scoring only" },
+      { "id": "hdl_mg_dL", "units": "mg/dL", "class": "slow", "healthy_reference": [40, 60], "prov": "NBME_LABS" },
+      { "id": "triglycerides_mg_dL", "units": "mg/dL", "class": "slow", "healthy_reference": "<150", "prov": "NBME_LABS", "moved_by": ["hydrochlorothiazide (up, small)", "metoprolol (up, small)"] },
+      { "id": "albumin_g_dL", "units": "g/dL", "class": "slow", "healthy_reference": [3.5, 5.5], "prov": "NBME_LABS", "use": "plasma protein binding / free fraction" },
+      { "id": "scr_mg_dL", "units": "mg/dL", "class": "dynamic", "physiological_range": [0.3, 12.0], "healthy_reference": [0.6, 1.2], "prov": "NBME_LABS",
+        "note": "Serum creatinine and eGFR are two views of the same state. Pick ONE as the integrated variable (recommendation: creatinine) and recompute the other, or the twin will drift out of self-consistency." }
+    ],
+    "neurohormonal": [
+      { "id": "raas_activity", "units": "relative", "class": "dynamic", "physiological_range": [0.05, 8.0], "prov": { "type": "ESTIMATED", "basis": "See derivation_pipeline step 39." },
+        "moved_by": ["lisinopril (down, direct)", "losartan (receptor blockade — PRA rises while effect falls)", "hydrochlorothiazide (UP — volume depletion triggers renin; this is the counter-regulation that makes RAAS+diuretic combinations synergistic)"],
+        "note": "IMPORTANT for Agent E: this variable is the mechanistic reason a thiazide plus a RAAS blocker is more than additive. Model it, do not shortcut it." },
+      { "id": "plasma_renin_activity_ng_mL_h", "units": "ng/mL/h", "class": "derived", "physiological_range": [0.1, 30], "healthy_reference_age_lt40": [0.6, 4.3], "healthy_reference_age_ge40": [0.6, 3.0], "prov": "UIOWA_PRA" },
+      { "id": "sympathetic_tone", "units": "relative", "class": "dynamic", "physiological_range": [0.2, 4.0], "prov": { "type": "ESTIMATED", "basis": "See derivation_pipeline step 41." }, "moved_by": ["metoprolol (functionally down at beta1 receptors)", "baroreflex (up when pressure falls)"] },
+      { "id": "baroreflex_gain_bpm_per_mmHg", "units": "bpm/mmHg", "class": "static", "physiological_range": [-3.0, -0.2], "prov": ["BRS_NORMALS", "MONAHAN2001_BRS"] }
+    ],
+    "respiratory": [
+      { "id": "fev1_pct_predicted", "units": "%", "class": "dynamic", "physiological_range": [20, 130], "healthy_reference": ">=80",
+        "prov": { "type": "ESTIMATED", "basis": ">=80% predicted is the conventional normal-spirometry cut-off; the GOLD stage boundaries belong to the copd_asthma preset." },
+        "moved_by": ["metoprolol (down — beta2 cross-antagonism at higher doses; the asthma reject case)"],
+        "visual_hint": "bronchiolar lumen diameter in the lung inset" }
+    ],
+    "adverse_effect_channels": {
+      "_note": "Dimensionless 0-1 indices. They exist so the animation and the report have something legible to bind to. None of them is a measured physiological quantity; all are ESTIMATED by construction and must be labelled as model indices in the UI, never as predicted incidence.",
+      "_prov": { "type": "ESTIMATED", "basis": "Constructed indices. Agent B/C own the dose-response that drives them; Agent F owns their visual encoding." },
+      "channels": [
+        { "id": "cough_index", "range": [0, 1], "driver": "lisinopril (bradykinin accumulation)", "organ": "airway / larynx", "onset": "days to weeks" },
+        { "id": "ankle_edema_index", "range": [0, 1], "driver": "amlodipine (precapillary arteriolar dilation without venodilation)", "organ": "lower limb", "onset": "days to weeks" },
+        { "id": "bronchoconstriction_index", "range": [0, 1], "driver": "metoprolol at beta2 receptors", "organ": "bronchiole", "onset": "hours" },
+        { "id": "dizziness_index", "range": [0, 1], "driver": "orthostatic_sbp_drop_mmHg and rate of MAP fall", "organ": "brain perfusion", "onset": "hours" },
+        { "id": "fatigue_index", "range": [0, 1], "driver": "metoprolol (reduced chronotropic reserve)", "organ": "skeletal muscle", "onset": "days" },
+        { "id": "polyuria_index", "range": [0, 1], "driver": "hydrochlorothiazide", "organ": "kidney / bladder", "onset": "hours" }
+      ]
+    }
+  },
+
+  "comorbidity_presets": {
+    "_composition_rule": {
+      "description": "A preset is a set of typed modifiers. Multiple presets may be active at once.",
+      "modifier_types": {
+        "multiply": "state = state * value. Multiple active multipliers on the same target COMPOSE MULTIPLICATIVELY.",
+        "add": "state = state + value. Composes additively.",
+        "set": "state = value. Composes as last-writer-wins in preset declaration order; a `set` always overrides any multiply/add on the same target.",
+        "clamp_min": "state = max(state, value)",
+        "clamp_max": "state = min(state, value)"
+      },
+      "order": "Apply in this order for every target: set -> multiply -> add -> clamp_min -> clamp_max.",
+      "conflict_policy": "If two active presets both declare `set` on the same target, the engine must raise a visible warning in the UI listing both presets and the value used. Silent overwriting is a defect.",
+      "extensibility": "Presets are keyed records with no cross-references between them. A preset may be added, corrected, or removed without touching the pipeline or the state vector. Agent C may edit the clinical content of any preset by editing only that preset's `modifiers` and `evidence` arrays.",
+      "schema_of_modifier": { "target": "state variable or pipeline output id", "op": "one of modifier_types", "value": "number", "prov": "source key or inline provenance", "note": "optional one-line mechanism" }
+    },
+
+    "_status": "COMPLETE for the ten conditions listed, at mixed evidence grade. Each preset carries a `confidence` field and, where applicable, a `not_found` array naming exactly which quantities could not be sourced. Read research/02-VIRTUAL-HUMAN.md section 'Preset evidence status' before quoting any magnitude to a clinician. This schema absorbs additions and corrections without restructuring: a preset is a self-contained keyed record and nothing else in the file references its internals.",
+    "_corrections_made_after_literature_review": [
+      "t2dm: plasma-volume expansion REMOVED — measurement shows absolute plasma volume in T2DM is identical to controls.",
+      "t2dm: resting heart rate shift raised from +5 to +10 bpm on cited data.",
+      "obesity_metabolic: systemic vascular resistance changed from unchanged to x0.80 — obesity hypertension is a high-output, LOW-resistance state.",
+      "elderly: cardiac-output multiplier corrected from an estimated 0.88 to a cited 0.73; heart-rate effect pinned to exactly zero on cited data; arterial compliance moved from estimate to derivation over cited stroke-volume and pulse-pressure data.",
+      "gout: baseline urate raised from an estimated 8.6 to a cited 9.2 mg/dL.",
+      "pregnancy: SVR multiplier corrected from 0.70 to 0.80 and eGFR multiplier from 1.45 to 1.23 — the textbook '+50% GFR' figure refers to measured GFR, not to what a creatinine-based equation reports.",
+      "asthma_copd: the team's 'beta-blocker contraindicated' framing downgraded to graded caution on meta-analytic data.",
+      "hepatic_impairment: all estimates replaced with a published Child-Pugh-stratified PBPK parameter table."
+    ],
+
+    "t2dm": {
+      "label": "Type 2 diabetes mellitus",
+      "icd11": "5A11",
+      "satisfies_condition_keys": ["t2dm", "diabetes"],
+      "confidence": "medium",
+      "diagnostic_thresholds": {
+        "fasting_glucose_mg_dL": 126, "two_hour_ogtt_mg_dL": 200, "hba1c_pct": 6.5, "random_glucose_with_symptoms_mg_dL": 200,
+        "prediabetes_fasting_glucose_mg_dL": [100, 125], "prediabetes_hba1c_pct": [5.7, 6.4],
+        "confirmation_rule": "In the absence of unequivocal hyperglycemia, diagnosis requires two abnormal results",
+        "prov": "ADA_2026"
+      },
+      "modifiers": [
+        { "target": "fasting_glucose_mg_dL", "op": "set", "value": 145, "prov": { "type": "ESTIMATED", "basis": "Chosen above the ADA 2026 diagnostic threshold of >=126 mg/dL so the preset is unambiguous; representative of treated-but-imperfectly-controlled T2DM." }, "prov_threshold": "ADA_2026" },
+        { "target": "hba1c_pct", "op": "set", "value": 7.6, "prov": { "type": "ESTIMATED", "basis": "Above the ADA 2026 diagnostic threshold of >=6.5% and above the common <7% treatment target; represents a patient in whom therapy is being escalated." }, "prov_threshold": "ADA_2026" },
+        { "target": "egfr_ckdepi2021", "op": "multiply", "value": 1.15, "prov": "CACHAT_2015",
+          "prov_note": "Glomerular hyperfiltration is present early in 50% of type 2 diabetes. The multiplier 1.15 applied to a normal eGFR of ~100 gives ~115, which sits below the median published hyperfiltration threshold of 135 mL/min/1.73 m2 — i.e. this preset produces the direction of the effect without asserting frank hyperfiltration.",
+          "threshold_caveat": "There is NO consensus hyperfiltration threshold: 405 studies used values from 90.7 to 175 (median 135, IQR 130-140), and reported prevalence swings from under 1% to about 50% purely as a function of that choice. If the UI labels a patient 'hyperfiltering', it must state which threshold it used.",
+          "note": "Suppressed when the ckd preset is also active; a patient cannot be simultaneously hyperfiltering and in CKD category G3+." },
+        { "target": "filtration_fraction", "op": "multiply", "value": 1.10, "prov": { "type": "ESTIMATED", "basis": "Hyperfiltration in diabetes is efferent-arteriole-mediated, which raises filtration fraction. This is precisely why ACE inhibitors and ARBs are renoprotective in this population, so the model must reproduce the mechanism for the compelling-indication story to be honest. The 10% magnitude is estimated; the obesity analogue (Chagnac 2008) measured a 29% filtration-fraction rise in severe obesity." }, "prov_analogue": "CHAGNAC_2008" },
+        { "target": "uacr_mg_g", "op": "set", "value": 45, "prov": "ADA_2026_CKD", "prov_note": "Places the patient in the moderately-increased albuminuria band (>=30 to <300 mg/g), the classic diabetic-nephropathy finding that triggers a RAAS-blocker indication." },
+        { "target": "heart_rate_bpm", "op": "add", "value": 10, "prov": "T2DM_HR", "prov_note": "Healthy controls 71.4 bpm vs T2DM 79-82 bpm depending on disease duration; +10 bpm is the defensible central shift. Cardiac autonomic neuropathy is the mechanism." },
+        { "target": "arterial_compliance_mL_mmHg", "op": "multiply", "value": 0.83, "prov": "T2DM_PWV",
+          "prov_note": "cf-PWV 12.5 m/s in T2DM vs 10.4 m/s in non-diabetics, a 20% increase in pulse wave velocity. Since PWV varies approximately as the inverse square root of compliance, a 20% PWV rise corresponds to roughly a 30% compliance fall; 0.83 is the conservative end of that conversion and is flagged as a derivation, not a measurement.",
+          "prov_conversion": { "type": "DERIVED", "from": "Moens-Korteweg relation between pulse wave velocity and arterial distensibility; conservatively applied." } }
+      ],
+      "corrected_from_draft": "An earlier draft of this preset expanded plasma volume by 5%. That is WRONG and has been removed: the only direct measurement located shows absolute plasma volume in T2DM is statistically identical to matched controls (2628 +/- 338 mL vs 2597 +/- 256 mL, p = 0.716). Only the relative plasma volume status index differs, by +3.73%. Do not model T2DM as a volume-expanded state.",
+      "corrected_from_draft_prov": "T2DM_PV",
+      "bp_threshold_note": "The 2025 AHA/ACC guideline sets the treatment goal at <130/80 for ALL adults, so diabetes no longer carries a distinct blood-pressure threshold as it did under earlier guidance. The team's draft scope (mission brief section 1.3) says 'earlier BP treatment threshold (130/80) per 2025 AHA/ACC guideline' for diabetes — that is now a general threshold, not a diabetes-specific one. Do not present it as diabetes-specific.",
+      "bp_threshold_prov": "AHA_ACC_2025_HTN",
+      "evidence": ["ADA_2026", "ADA_2026_CKD", "T2DM_HR", "T2DM_PV", "CACHAT_2015", "T2DM_PWV", "AHA_ACC_2025_HTN"],
+      "animation_hooks": ["glomerular hyperfiltration flux", "albumin leak in the glomerulus inset"]
+    },
+
+    "ckd": {
+      "label": "Chronic kidney disease",
+      "icd11": "GB61",
+      "confidence": "medium",
+      "parameterised_by": "stage (G3a | G3b | G4)",
+      "definition": "Abnormalities of kidney structure or function present for at least 3 months.",
+      "definition_prov": "KDIGO_2024",
+      "gfr_categories": {
+        "G1": { "range": [90, 200], "label": "Normal or high" },
+        "G2": { "range": [60, 89], "label": "Mildly decreased" },
+        "G3a": { "range": [45, 59], "label": "Mildly to moderately decreased" },
+        "G3b": { "range": [30, 44], "label": "Moderately to severely decreased" },
+        "G4": { "range": [15, 29], "label": "Severely decreased" },
+        "G5": { "range": [0, 14], "label": "Kidney failure" },
+        "units": "mL/min/1.73m^2",
+        "prov": "KDIGO_2024"
+      },
+      "albuminuria_categories": {
+        "A1": { "mg_g": "<30", "mg_mmol": "<3", "label": "Normal to mildly increased" },
+        "A2": { "mg_g": "30-300", "mg_mmol": "3-30", "label": "Moderately increased" },
+        "A3": { "mg_g": ">300", "mg_mmol": ">30", "label": "Severely increased" },
+        "prov": "KDIGO_2024"
+      },
+      "hyperkalaemia_epidemiology": {
+        "prevalence_by_gfr_category": { "G1": 0.065, "G5": 0.475, "dialysis": 0.44 },
+        "median_serum_k_mmol_L": 4.5,
+        "advanced_ckd_k_above_5_5_prevalence": 0.40,
+        "severity_bands": { "mild": [5.5, 5.9], "moderate": [6.0, 6.4], "severe": ">=6.5" },
+        "prov": "CKD_K",
+        "use": "The stage-wise potassium modifiers below are chosen so that a G4 twin sits near the top of the reference interval, making a RAAS blocker's incremental potassium rise cross into the mild-hyperkalaemia band. That is the intended demo behaviour and it is anchored on this prevalence data rather than on an invented delta."
+      },
+      "anaemia_epidemiology": { "prevalence_stage1": 0.084, "prevalence_stage5": 0.534, "prov": "CKD_ANEMIA" },
+      "acidosis_epidemiology": { "prevalence_stage3": 0.13, "prevalence_stage4": 0.37, "bicarbonate_threshold_mEq_L": 22, "onset_egfr_mL_min": 40, "prov": "CKD_ACIDOSIS" },
+      "modifiers_by_stage": {
+        "G3a": [
+          { "target": "scr_mg_dL", "op": "set", "value": 1.45, "prov": { "type": "DERIVED", "from": "Chosen so that the CKD-EPI 2021 equation returns an eGFR inside the G3a band (45-59) for a 60-year-old male. The engine MUST set creatinine, not eGFR, and let eGFR follow — otherwise the twin becomes internally inconsistent." } },
+          { "target": "serum_k_mmol_L", "op": "add", "value": 0.2, "prov": { "type": "ESTIMATED", "basis": "Potassium excretion is largely preserved until advanced CKD, so only a small rise at G3a. The magnitude is estimated; it is anchored on the cited stage-wise hyperkalaemia prevalence (6.5% at G1 rising to 47.5% at G5) rather than on a published mean delta, because no stage-stratified mean potassium table was located." }, "prov_anchor": "CKD_K" },
+          { "target": "hemoglobin_g_dL", "op": "add", "value": -0.8, "prov": { "type": "ESTIMATED", "basis": "Early erythropoietin deficiency. Magnitude estimated: no stage-stratified mean haemoglobin table was located, only prevalence (anaemia in 8.4% at stage 1 rising to 53.4% at stage 5)." }, "prov_anchor": "CKD_ANEMIA" },
+          { "target": "plasma_volume_L", "op": "multiply", "value": 1.05, "prov": { "type": "ESTIMATED", "basis": "Sodium and volume retention." } },
+          { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 1.08, "prov": { "type": "ESTIMATED", "basis": "Volume- and RAAS-mediated resistance elevation in CKD hypertension." } },
+          { "target": "uacr_mg_g", "op": "set", "value": 120, "prov": { "type": "ESTIMATED", "basis": "Places the patient in KDIGO albuminuria category A2." } }
+        ],
+        "G3b": [
+          { "target": "scr_mg_dL", "op": "set", "value": 1.90, "prov": { "type": "DERIVED", "from": "Tuned to land eGFR in the 30-44 band; see G3a note." } },
+          { "target": "serum_k_mmol_L", "op": "add", "value": 0.4, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated; direction and stage-dependence are not in dispute. Anchored on the cited stage-wise hyperkalaemia prevalence data." }, "prov_anchor": "CKD_K" },
+          { "target": "hemoglobin_g_dL", "op": "add", "value": -1.5, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated; see the G3a note. Prevalence data only." }, "prov_anchor": "CKD_ANEMIA" },
+          { "target": "serum_hco3_mmol_L", "op": "add", "value": -2.0, "prov": { "type": "ESTIMATED", "basis": "Metabolic acidosis of CKD, prevalence 13% at stage 3. Magnitude estimated so that the G3b twin sits just above the <22 mEq/L acidosis threshold." }, "prov_anchor": "CKD_ACIDOSIS" },
+          { "target": "plasma_volume_L", "op": "multiply", "value": 1.10, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated." } },
+          { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 1.12, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated." } },
+          { "target": "serum_urate_mg_dL", "op": "add", "value": 1.0, "prov": { "type": "ESTIMATED", "basis": "Reduced urate excretion. Magnitude estimated." } },
+          { "target": "uacr_mg_g", "op": "set", "value": 350, "prov": { "type": "ESTIMATED", "basis": "KDIGO albuminuria category A3." } }
+        ],
+        "G4": [
+          { "target": "scr_mg_dL", "op": "set", "value": 3.10, "prov": { "type": "DERIVED", "from": "Tuned to land eGFR in the 15-29 band; see G3a note." } },
+          { "target": "serum_k_mmol_L", "op": "add", "value": 0.7, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated so that a G4 twin starts near 4.9 mmol/L and a RAAS blocker pushes it into the mild-hyperkalaemia band (5.5-5.9). Anchored on the finding that 40% of patients at mean eGFR 14.6 have potassium above 5.5 mmol/L." }, "prov_anchor": "CKD_K" },
+          { "target": "hemoglobin_g_dL", "op": "add", "value": -2.5, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated; see the G3a note. Prevalence data only." }, "prov_anchor": "CKD_ANEMIA" },
+          { "target": "serum_hco3_mmol_L", "op": "add", "value": -4.0, "prov": { "type": "ESTIMATED", "basis": "Prevalence 37% at stage 4; magnitude estimated so that the G4 twin sits at 21 mmol/L, just below the <22 mEq/L acidosis threshold. Acidosis is reported not to appear until eGFR falls below about 40 mL/min, which is consistent with applying it from G3b onward." }, "prov_anchor": "CKD_ACIDOSIS" },
+          { "target": "plasma_volume_L", "op": "multiply", "value": 1.15, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated." } },
+          { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 1.15, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated." } },
+          { "target": "serum_urate_mg_dL", "op": "add", "value": 2.0, "prov": { "type": "ESTIMATED", "basis": "Magnitude estimated." } },
+          { "target": "renal_blood_flow", "op": "multiply", "value": 0.55, "prov": { "type": "ESTIMATED", "basis": "Renal blood flow falls broadly in proportion to nephron loss. Magnitude estimated." } },
+          { "target": "uacr_mg_g", "op": "set", "value": 800, "prov": { "type": "ESTIMATED", "basis": "KDIGO albuminuria category A3." } }
+        ]
+      },
+      "pk_consequence": "The dominant effect of this preset on the simulation is NOT the modifier list — it is that egfr_absolute_mL_min falls, which cuts lisinopril's renal clearance (lisinopril is eliminated unchanged in urine) and reduces hydrochlorothiazide's natriuretic efficacy because less drug reaches the distal tubule. Agent B/E must bind those to egfr_absolute_mL_min, not to a CKD flag.",
+      "not_found": [
+        { "quantity": "plasma volume or ECF expansion in CKD, quantified", "status": "NOT_FOUND", "consequence": "The plasma_volume_L multipliers in this preset (1.05 / 1.10 / 1.15) are ESTIMATED. Direction is certain, magnitude is not." },
+        { "quantity": "systemic vascular resistance elevation in CKD, in dyn.s.cm^-5", "status": "NOT_FOUND", "consequence": "The svr_dyn_s_cm5 multipliers (1.08 / 1.12 / 1.15) are ESTIMATED." },
+        { "quantity": "stage-stratified mean serum potassium and mean haemoglobin tables", "status": "NOT_FOUND", "consequence": "Only prevalence data exists; the deltas are calibrated against prevalence, which is a weaker anchor." }
+      ],
+      "evidence": ["KDIGO_2024", "CKD_K", "CKD_ANEMIA", "CKD_ACIDOSIS"]
+    },
+
+    "hfref": {
+      "label": "Heart failure with reduced ejection fraction",
+      "icd11": "BD10",
+      "satisfies_condition_keys": ["hfref"],
+      "confidence": "medium",
+      "definition": { "hfref_lvef_pct": "<=40", "hfmref_lvef_pct": "41-49", "hfpef_lvef_pct": ">=50", "prov": "ESC_2021_HF" },
+      "modifiers": [
+        { "target": "lvef_pct", "op": "set", "value": 25, "prov": "HFREF_HEMO", "prov_note": "Observed mean LVEF 23.4% (SD 5.2) in the cited invasive-haemodynamics HFrEF cohort; 25% is inside 1 SD and comfortably satisfies the ESC <=40% definition." },
+        { "target": "contractility_index", "op": "multiply", "value": 0.60, "prov": { "type": "DERIVED", "from": "Calibrated so that the resulting cardiac index lands near the observed HFrEF value of 2.7 L/min/m2 once the compensatory tachycardia below is applied, against a modelled healthy cardiac index of ~3.4 L/min/m2. That is a 21% cardiac-index reduction, which matches the cited cohort." }, "prov_target": "HFREF_HEMO" },
+        { "target": "heart_rate_bpm", "op": "add", "value": 12, "prov": { "type": "ESTIMATED", "basis": "Compensatory sympathetic tachycardia. NOT_FOUND: no HFrEF-specific resting heart rate was located in the accessible literature, so this magnitude is an estimate." } },
+        { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 1.25, "prov": { "type": "ESTIMATED", "basis": "Neurohormonally-driven vasoconstriction is the hallmark of the low-output state. The cited HFrEF cohort reports a median systemic vascular resistance INDEX of 2116 dyn.s.cm-5.m-2 (high-SVRI subgroup mean 2404). Converting index to absolute resistance requires dividing by body surface area, which at ~1.9 m2 gives roughly 1110 dyn.s.cm-5 — inside the normal 800-1200 band. The cohort therefore does NOT demonstrate a large absolute SVR elevation, and this multiplier is deliberately modest and flagged as estimated rather than presented as measured." }, "prov_context": "HFREF_HEMO" },
+        { "target": "plasma_volume_L", "op": "multiply", "value": 1.35, "prov": "HFREF_VOLUME", "prov_note": "Total blood volume in HFrEF is expanded by 37 +/- 25% (range 0% to 107%) above normal. 1.35 represents the central estimate. Note the enormous spread: this is one of the most variable parameters in the model, and a virtual population should sample it widely rather than use the mean." },
+        { "target": "serum_na_mmol_L", "op": "add", "value": -4.0, "prov": { "type": "ESTIMATED", "basis": "Calibrated to place the twin at 136 mmol/L, i.e. just above the <135 mmol/L hyponatraemia definition, so that a thiazide can push it across. Anchored on the finding that 25.3% of 47,647 hospitalised heart-failure patients had admission sodium below 135 mmol/L." }, "prov_anchor": "OPTIMIZE_HF_NA" },
+        { "target": "raas_activity", "op": "multiply", "value": 2.0, "prov": { "type": "ESTIMATED", "basis": "RAAS activation is the central pathophysiology of HFrEF and the reason ACE inhibitors/ARBs and beta-blockers are prognostic therapy here. Doubling is a conservative representation of a qualitatively certain effect." } },
+        { "target": "sympathetic_tone", "op": "multiply", "value": 1.8, "prov": { "type": "ESTIMATED", "basis": "Adrenergic activation. Magnitude estimated." } },
+        { "target": "renal_blood_flow", "op": "multiply", "value": 0.70, "prov": { "type": "ESTIMATED", "basis": "Cardiorenal reduction in renal perfusion. The only quantitative source located for HFrEF renal blood flow (normal 600-660 vs congestive heart failure 250-450 mL/min/m2) was a patent document and is NOT of citable quality; it is mentioned only to record that it was found and rejected. Treat this multiplier as an estimate." } }
+      ],
+      "engine_warning": "In HFrEF a beta-blocker acutely reduces cardiac output before it produces long-term benefit. If the engine only simulates hours, metoprolol will look harmful in this preset. Either simulate the chronic reverse-remodelling arm or state clearly in the UI that the acute run does not represent the chronic benefit. This is the model's single most misleading potential output and the one a cardiologist judge is most likely to challenge.",
+      "not_found": [
+        { "quantity": "HFrEF-specific resting heart rate and stroke volume", "status": "NOT_FOUND" },
+        { "quantity": "HFrEF renal blood flow from a citable source", "status": "NOT_FOUND", "note": "One number was found but only in a patent document; rejected." }
+      ],
+      "evidence": ["ESC_2021_HF", "HFREF_HEMO", "HFREF_VOLUME", "OPTIMIZE_HF_NA", "FRAMINGHAM_REF"]
+    },
+
+    "obesity_metabolic": {
+      "label": "Obesity / metabolic syndrome",
+      "confidence": "low",
+      "trigger": "bmi >= 30 (international) or bmi >= 27.5 (WHO Asian public-health-action point)",
+      "trigger_prov": "WHO_ASIAN_BMI",
+      "metabolic_syndrome_criteria": {
+        "rule": "Three abnormal findings out of five; no obligatory component; regional waist cut-points.",
+        "waist_circumference_in": { "male": ">40", "female": ">35" },
+        "triglycerides_mg_dL": ">=150",
+        "hdl_mg_dL": { "male": "<40", "female": "<50" },
+        "fasting_glucose_mg_dL": ">=100",
+        "blood_pressure_mmHg": "SBP >=130 or DBP >=85",
+        "prov": "METSYN_HARMONIZED"
+      },
+      "quantitative_relations": {
+        "_note": "PREFER THESE CONTINUOUS RELATIONS to the discrete multipliers below where the engine can use them — they scale correctly with BMI instead of applying a fixed step.",
+        "cardiac_output_L_min_delta": "0.08 * (bmi - 22)", "cardiac_output_prov": "OBESITY_HEMO",
+        "stroke_volume_mL_delta": "1.35 * (bmi - 22)", "stroke_volume_prov": "OBESITY_HEMO",
+        "indexed_blood_volume_mL_per_kg": "70 / Math.sqrt(bmi / 22)", "indexed_blood_volume_prov": "LEMMENS_2006",
+        "indexed_blood_volume_note": "The Lemmens relation is the better blood-volume estimator above BMI 30 and should REPLACE Nadler there. Blood volume per kg falls from 70 mL/kg in lean adults to about 50 mL/kg in obesity and about 45 mL/kg at BMI 60, while total blood volume still rises."
+      },
+      "modifiers": [
+        { "target": "cardiac_output", "op": "multiply", "value": 1.15, "prov": "OBESITY_HEMO", "prov_note": "Fallback discrete form of the +0.08 L/min per BMI unit relation above: at BMI 40 that is +1.44 L/min on a ~5.6 L/min baseline, i.e. about +26%. The 1.15 multiplier is deliberately smaller because BSA-scaling in derivation_pipeline step 19 already captures part of the effect. Use the continuous relation instead where possible." },
+        { "target": "stroke_volume_mL", "op": "add", "value": 12, "prov": "OBESITY_HEMO", "prov_note": "Discrete form of +1.35 mL per BMI unit, evaluated at about 9 BMI units above the reference." },
+        { "target": "heart_rate_bpm", "op": "add", "value": 0, "prov": "OBESITY_HEMO", "prov_note": "Explicitly zero: resting heart rate in obesity is reported as essentially unchanged or only slightly elevated. Listed so a future editor does not add a tachycardia that the evidence does not support." },
+        { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 0.80, "prov": "OBESITY_HEMO",
+          "prov_note": "CORRECTION TO AN EARLIER DRAFT, WHICH HAD THIS UNCHANGED. Normotensive obese patients show approximately a 20% DECREASE in systemic vascular resistance compared with lean controls. Obesity hypertension is therefore a high-output, low-resistance state, not a vasoconstricted one — which is why obese hypertensives respond differently to a vasodilator (amlodipine) than to a RAAS blocker, and why the team's draft claim of 'higher CCB response typical' in obesity needs care." },
+        { "target": "plasma_volume_L", "op": "multiply", "value": 1.10, "prov": { "type": "ESTIMATED", "basis": "Absolute plasma volume rises in obesity even though indexed volume per kg falls. Magnitude estimated; the Lemmens relation above is the better route." }, "prov_preferred": "LEMMENS_2006" },
+        { "target": "egfr_ckdepi2021", "op": "multiply", "value": 1.25, "prov": "CHAGNAC_2008", "prov_note": "In severe obesity GFR is 61% higher and renal plasma flow 28% higher than lean. 1.25 is a conservative value for moderate obesity; the cited 61% applies to severe obesity and would be the value to use at BMI 40+." },
+        { "target": "filtration_fraction", "op": "multiply", "value": 1.29, "prov": "CHAGNAC_2008", "prov_note": "Filtration fraction 29% higher in severe obesity vs lean — the same efferent-mediated mechanism as in diabetes, and the physiological basis for RAAS blockade being renoprotective here too." },
+        { "target": "raas_activity", "op": "multiply", "value": 1.3, "prov": { "type": "ESTIMATED", "basis": "Adipose tissue is a source of angiotensinogen and aldosterone-releasing factors; RAAS activation in obesity hypertension is well described qualitatively. Magnitude estimated." } },
+        { "target": "serum_urate_mg_dL", "op": "add", "value": 0.8, "prov": { "type": "ESTIMATED", "basis": "Hyperuricaemia clusters with metabolic syndrome. Magnitude estimated." } },
+        { "target": "triglycerides_mg_dL", "op": "multiply", "value": 1.5, "prov": { "type": "ESTIMATED", "basis": "Metabolic syndrome dyslipidaemia; calibrated to cross the >=150 mg/dL harmonized criterion from a normal baseline." }, "prov_threshold": "METSYN_HARMONIZED" },
+        { "target": "hdl_mg_dL", "op": "multiply", "value": 0.8, "prov": { "type": "ESTIMATED", "basis": "Metabolic syndrome dyslipidaemia; calibrated toward the <40 (male) / <50 (female) mg/dL harmonized criterion." }, "prov_threshold": "METSYN_HARMONIZED" }
+      ],
+      "source_grade_warning": "The cardiac-output, stroke-volume and SVR numbers above come from a well-referenced educational site citing Stelfox 2006, de Divitiis 1981 and Messerli 1983 rather than from the primary papers directly. They should be confirmed against those primaries before being shown to a clinician judge.",
+      "pk_consequence": "More important than any modifier here: obesity changes the ratio lbw_kg / weight_kg, which changes the volume of distribution of lipophilic drugs (amlodipine, metoprolol) much more than that of hydrophilic ones (lisinopril). The pipeline already produces both anchors; the PK layer must use the right one per drug.",
+      "labelling_note": "Per the 2025 Lancet Commission, do not render this preset as a diagnosis of 'obesity' on the basis of BMI alone. Label it 'BMI category / metabolic risk profile'.",
+      "labelling_prov": "LANCET_OBESITY_2025",
+      "evidence": ["WHO_ASIAN_BMI", "LANCET_OBESITY_2025"]
+    },
+
+    "elderly": {
+      "label": "Ageing (65+)",
+      "confidence": "medium",
+      "note": "NOT a disease preset. Age already enters the CKD-EPI, Watson and baroreflex equations directly. This preset carries only the effects age has that those equations do not already contain. Applying it on top of a high age_years is therefore NOT double counting, but any addition to it must be checked against that rule.",
+      "reference_data": {
+        "cardiac_index_L_min_m2_by_age": { "under_40": 3.0, "40_to_60": 3.0, "over_60": 2.2, "sd": [0.8, 0.9, 0.6], "correlation_with_age": "r = -0.39, p < 0.001", "prov": "AGING_HEMO" },
+        "stroke_volume_index_mL_m2_by_age": { "under_40": 39, "40_to_60": 40, "over_60": 31, "decline_across_age_distribution_pct": 23, "prov": "AGING_HEMO" },
+        "resting_heart_rate_bpm_by_age": { "under_40": 79, "40_to_60": 76, "over_60": 75, "finding": "Age was not associated with the resting heart rate (r = 0.10; p = 0.15)", "prov": "AGING_HEMO" },
+        "blood_pressure_by_age": { "under_50": "115 +/- 13 / 75 +/- 10", "50_and_over": "128 +/- 17 / 74 +/- 10", "pulse_pressure_mmHg": { "under_50": 40, "50_and_over": 54 }, "prov": "FRAMINGHAM_REF" },
+        "cf_pwv_m_s_by_age": { "under_30": 6.2, "30_39": 6.5, "40_49": 7.2, "50_59": 8.3, "60_69": 10.3, "70_plus": 10.9, "prov": "PWV_REF_2010" },
+        "gfr_decline": { "per_decade_mL_min_1_73": 8, "starts_after_decade": 4, "measured_gfr_young_19_32": 127, "measured_gfr_old_65_76": 79, "prov": "AGING_KIDNEY" },
+        "renal_blood_flow_decline_pct_per_decade_after_40": 10, "renal_blood_flow_prov": "AGING_KIDNEY",
+        "orthostatic_hypotension_prevalence": { "age_60_plus": 0.20, "age_65_plus_chs": 0.182, "age_80_plus": 0.41, "prov": "OH_PREVALENCE" }
+      },
+      "modifiers": [
+        { "target": "arterial_compliance_mL_mmHg", "op": "multiply", "value": 0.59,
+          "prov": { "type": "DERIVED", "from": "Total arterial compliance is stroke volume divided by pulse pressure. Between the Framingham under-50 and 50-and-over groups pulse pressure rises from 40 to 54 mmHg (x1.35) while stroke volume index falls from 39 to 31 mL/m2 (x0.795). Compliance ratio = 0.795 / 1.35 = 0.589. This replaces an earlier purely estimated value of 0.62 — the two agree closely, but this one is arithmetic over cited data." },
+          "prov_inputs": ["FRAMINGHAM_REF", "AGING_HEMO", "CHEMLA1998"],
+          "corroboration": "Independently supported by carotid-femoral pulse wave velocity, which rises from 6.5 m/s at age 30-39 to 10.3 m/s at 60-69.",
+          "corroboration_prov": "PWV_REF_2010" },
+        { "target": "cardiac_output", "op": "multiply", "value": 0.73, "prov": "AGING_HEMO",
+          "prov_note": "Resting cardiac index falls from 3.0 L/min/m2 in adults under 40 to 2.2 in those over 60, a ratio of 0.73. This CORRECTS an earlier estimate of 0.88 — the true decline is roughly twice as large as that guess." },
+        { "target": "stroke_volume_mL", "op": "multiply", "value": 0.795, "prov": "AGING_HEMO", "prov_note": "Stroke volume index 31 vs 39 mL/m2 (over 60 vs under 40)." },
+        { "target": "heart_rate_bpm", "op": "add", "value": 0, "prov": "AGING_HEMO", "prov_note": "Explicitly zero. Resting heart rate does NOT decline meaningfully with age in healthy adults (79 / 76 / 75 bpm across age bands; r = 0.10, p = 0.15). Listed so a future editor does not add an age-related bradycardia that the evidence contradicts. The whole of the cardiac-output decline is carried by stroke volume." },
+        { "target": "hepatic_blood_flow", "op": "multiply", "value": 0.75, "prov": "KUCHEL_AGING_PK",
+          "prov_note": "Hepatic blood flow declines by 10% per decade; liver mass falls 20-40% with ageing; clearance of flow-limited drugs falls 30-40%. 0.75 represents roughly three decades of decline from age 40. This directly raises the oral bioavailability of metoprolol, a high-extraction drug, and is the physiological reason older patients need lower starting doses." },
+        { "target": "liver_mass_g", "op": "multiply", "value": 0.75, "prov": "KUCHEL_AGING_PK" },
+        { "target": "renal_blood_flow", "op": "multiply", "value": 0.75, "prov": "AGING_KIDNEY", "prov_note": "Renal blood flow is well-maintained at about 600 mL/min until age 40 then falls about 10% per decade; 0.75 represents roughly three decades." },
+        { "target": "baroreflex_gain_bpm_per_mmHg", "op": "multiply", "value": 1.0, "prov": { "type": "DERIVED", "from": "Deliberately 1.0: the age effect on baroreflex gain is already in derivation_pipeline step 42, from Monahan 2001. Listed explicitly so a future editor does not add it twice." } },
+        { "target": "raas_activity", "op": "multiply", "value": 0.7, "prov": { "type": "ESTIMATED", "basis": "Plasma renin activity falls with age (the cited reference intervals are themselves lower for >=40 years), which is the physiological reason older and low-renin patients respond relatively better to calcium-channel blockers and thiazides than to RAAS blockers. This is the single modifier in this preset that produces a clinically meaningful drug-choice difference, so it matters that the direction is right." }, "prov_support": "UIOWA_PRA" },
+        { "target": "lbw_kg", "op": "multiply", "value": 0.92, "prov": { "type": "ESTIMATED", "basis": "Sarcopenia reduces lean mass beyond what the Janmahasatian BMI-based formula captures. Magnitude estimated." } }
+      ],
+      "safety_note": "The falls/dizziness channel matters more here than the blood-pressure number. Reduced baroreflex gain plus reduced arterial compliance means a given dose produces a larger orthostatic drop. Orthostatic hypotension is already present in about 20% of adults aged 60 and over and 41% of those aged 80 and over, before any drug is given. The UI should surface orthostatic_sbp_drop_mmHg prominently whenever this preset is active.",
+      "safety_note_prov": ["AAFP_OH", "OH_PREVALENCE"],
+      "not_found": [
+        { "quantity": "age-stratified total body water and lean mass as percentages", "status": "NOT_FOUND", "note": "Only directional statements were located ('total body water decreased'). The lbw_kg multiplier of 0.92 is therefore ESTIMATED. Note the Watson TBW equation already carries an explicit age term for males, so part of this is not missing." },
+        { "quantity": "baroreflex sensitivity in ms/mmHg stratified by age band", "status": "NOT_FOUND", "note": "Only the relative reductions (~33% middle-aged, ~60% older) were found; those are what derivation_pipeline step 42 uses." }
+      ],
+      "evidence": ["AGING_HEMO", "AGING_KIDNEY", "FRAMINGHAM_REF", "PWV_REF_2010", "KUCHEL_AGING_PK", "OH_PREVALENCE", "MONAHAN2001_BRS", "UIOWA_PRA"]
+    },
+
+    "asthma_copd": {
+      "label": "Asthma / COPD",
+      "satisfies_condition_keys": ["asthma", "copd"],
+      "confidence": "medium",
+      "gold_grades": { "GOLD_1": "FEV1 >=80% predicted", "GOLD_2": "50% <= FEV1 < 80%", "GOLD_3": "30% <= FEV1 < 50%", "GOLD_4": "FEV1 < 30%", "applies_when": "post-bronchodilator FEV1/FVC < 0.70", "prov": "GOLD_2025" },
+      "modifiers": [
+        { "target": "fev1_pct_predicted", "op": "set", "value": 62, "prov": "GOLD_2025", "prov_note": "Placed in GOLD grade 2 (50% <= FEV1 < 80% predicted) so that a further beta-blocker-induced fall is visible but not instantly catastrophic — the preset must demonstrate a graded risk, not only a binary reject." },
+        { "target": "heart_rate_bpm", "op": "add", "value": 6, "prov": { "type": "ESTIMATED", "basis": "Beta-agonist therapy and hypoxic drive raise resting heart rate. NOT_FOUND: no citable resting heart rate for COPD was located, so this magnitude is an estimate." } }
+      ],
+      "beta_blocker_effect_data": {
+        "_note": "THE SHARPEST ACTIONABLE NUMBERS IN THIS PRESET. Agent C's rule and Agent E's simulation should both use these rather than a generic 'bronchospasm' flag.",
+        "copd_cardioselective_single_dose_fev1_pct_change": { "value": -2.05, "ci": [-6.05, 1.96], "prov": "SALPETER_COPD" },
+        "copd_cardioselective_longer_duration_fev1_pct_change": { "value": -2.55, "ci": [-5.94, 0.84], "prov": "SALPETER_COPD" },
+        "copd_nonselective_fev1_absolute_L_change": { "value": -0.14, "prov": "SALPETER_COPD" },
+        "copd_cardioselective_fev1_absolute_L_change": { "value": -0.03, "prov": "SALPETER_COPD" },
+        "asthma_reactive_airway_cardioselective_single_dose_fev1_pct_change": { "value": -7.46, "reversible": "reversed after administration of a beta agonist", "n_studies": 19, "n_patients": 240, "prov": "SALPETER_COPD" },
+        "asthma_continued_treatment": { "finding": "10 studies, 141 participants — no participant had a significant drop in FEV1 or developed new symptoms", "prov": "SALPETER_COPD" }
+      },
+      "critical_note": "This preset exists mainly to be a REJECT/CAUTION case for metoprolol, and the team's draft scope (mission brief section 1.3) states flatly that 'beta-blocker contraindicated (bronchospasm)' in asthma/COPD. THAT IS TOO STRONG AND A CLINICIAN JUDGE WILL SAY SO. The cited meta-analytic data show a cardioselective beta-1 blocker reduces FEV1 by only about 2% in COPD, that the effect does not worsen with continued treatment, and that even in reactive airway disease the acute 7.5% fall is fully reversed by a beta-2 agonist and does not recur on continued treatment. Non-selective beta-blockade is the genuinely harmful case (-0.14 L vs -0.03 L). Metoprolol is beta-1 selective. The correct modelled statement is: relative caution with dose-dependent loss of selectivity, absolute contraindication only in severe or unstable asthma. Agent C owns the rule severity; this preset supplies the physiology and the numbers.",
+      "evidence": ["GOLD_2025", "SALPETER_COPD"]
+    },
+
+    "gout": {
+      "label": "Gout / hyperuricaemia",
+      "satisfies_condition_keys": ["gout", "hyperuricemia"],
+      "confidence": "high",
+      "thresholds": {
+        "monosodium_urate_saturation_mg_dL": 6.8,
+        "monosodium_urate_saturation_umol_L": 400,
+        "asymptomatic_hyperuricaemia_definition": "serum urate >=6.8 mg/dl with no prior gout flares or subcutaneous tophi",
+        "acr_2020_urate_lowering_target_mg_dL": "<6",
+        "acr_2020_target_strength": "strong recommendation, certainty High (PICO 14)",
+        "tophaceous_target_mg_dL": "<5",
+        "high_burden_marker_mg_dL": ">9",
+        "prov": "ACR_GOUT_2020"
+      },
+      "modifiers": [
+        { "target": "serum_urate_mg_dL", "op": "set", "value": 9.2, "prov": "GOUT_BASELINE_SU",
+          "prov_note": "Mean baseline serum urate in gout trial cohorts is 9.2-9.8 mg/dL (MIRROR 9.2 +/- 2.5; pegloticase phase II 9.2). 9.2 mg/dL is well above the 6.8 mg/dL monosodium-urate saturation threshold and above the ACR <6 mg/dL treatment target, so a thiazide-induced increment moves the twin further into unambiguously harmful territory. This REPLACES an earlier estimate of 8.6 mg/dL." },
+        { "target": "egfr_ckdepi2021", "op": "multiply", "value": 1.0, "prov": { "type": "DERIVED", "from": "Deliberately neutral. Gout and CKD co-occur frequently but gout does not itself reduce GFR; if the twin has both, the ckd preset should be applied explicitly rather than smuggled in here." } }
+      ],
+      "role": "The hydrochlorothiazide reject case, and the losartan positive case — losartan is uricosuric and lowers serum urate, so this preset is where the model can RECOMMEND as well as reject. That opposing pair on a single state variable is the clearest demonstration in the whole product that the engine is mechanistic rather than rule-lookup.",
+      "evidence": ["ACR_GOUT_2020", "GOUT_BASELINE_SU", "NBME_LABS"]
+    },
+
+    "pregnancy": {
+      "label": "Pregnancy",
+      "satisfies_condition_keys": ["pregnant", "pregnancy"],
+      "confidence": "medium",
+      "parameterised_by": "gestational_week",
+      "reference_data": {
+        "blood_volume_increase_L": 1.5,
+        "plasma_volume_increase_pct": [45, 50],
+        "red_cell_mass_increase_pct": [20, 30],
+        "cardiac_output_increase_pct_at_8_weeks": 20,
+        "cardiac_output_increase_pct_overall": 40,
+        "heart_rate_increase_bpm": [10, 15],
+        "svr_reduction_pct_at_term": 20,
+        "svr_nadir_week": 24,
+        "bp_nadir_weeks": [20, 24],
+        "gfr_increase_pct": 50,
+        "renal_plasma_flow_increase_pct": 80,
+        "prov": "PREG_PHYSIOLOGY",
+        "egfr_by_stage_mL_min_1_73": { "non_pregnant": 105.1, "trimester_1": 123.4, "weeks_24_30": 129.0 },
+        "serum_creatinine_umol_L_by_stage": { "non_pregnant": 62.8, "weeks_4_7": 55.1, "weeks_8_9": 52.7, "weeks_10_12": 51.1, "weeks_24_30": 47.7 },
+        "creatinine_fraction_of_non_pregnant": { "trimester_1": 0.847, "trimester_2": 0.764 },
+        "measured_prov": "PREG_EGFR"
+      },
+      "modifiers": [
+        { "target": "plasma_volume_L", "op": "multiply", "value": 1.45, "prov": "PREG_PHYSIOLOGY", "prov_note": "Plasma volume increases by 45-50%; 1.45 is the lower bound. Corresponds to the stated absolute increase of about 1.5 L in total blood volume. Corrects an earlier estimate of 1.40." },
+        { "target": "hematocrit_frac", "op": "multiply", "value": 0.85, "prov": { "type": "DERIVED", "from": "Plasma volume rises 45-50% while red cell mass rises only 20-30%. For a starting haematocrit of 0.41, new Hct = (1.25 x RBC)/(1.25 x RBC + 1.475 x plasma) which gives approximately 0.35, a ratio of 0.85. This is the physiological dilutional anaemia of pregnancy." }, "prov_inputs": "PREG_PHYSIOLOGY" },
+        { "target": "cardiac_output", "op": "multiply", "value": 1.40, "prov": "PREG_PHYSIOLOGY", "prov_note": "Cardiac output rises approximately 40% throughout pregnancy; 20% is already reached by 8 weeks." },
+        { "target": "heart_rate_bpm", "op": "add", "value": 12, "prov": "PREG_PHYSIOLOGY", "prov_note": "Heart rate increases by 10-15 bpm, maximal in the third trimester." },
+        { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 0.80, "prov": "PREG_PHYSIOLOGY", "prov_note": "SVR reaches a nadir by week 24 and remains approximately 20% below pre-pregnancy values at term. CORRECTS an earlier estimate of 0.70, which overstated the fall." },
+        { "target": "egfr_ckdepi2021", "op": "multiply", "value": 1.23, "prov": "PREG_EGFR",
+          "prov_note": "Measured eGFR rises from 105.1 mL/min/1.73 m2 non-pregnant to 123.4 in the first trimester (x1.17) and 129.0 at 24-30 weeks (x1.23). CORRECTS an earlier estimate of 1.45, which conflated the textbook '+50% GFR' figure (a measured-GFR statement) with what a creatinine-based eGFR equation actually reports in pregnancy.",
+          "validity_warning": "The CKD-EPI equation is NOT validated in pregnancy. The UI must display the eGFR with an explicit 'not a valid clinical estimate in pregnancy' badge." },
+        { "target": "scr_mg_dL", "op": "multiply", "value": 0.764, "prov": "PREG_EGFR", "prov_note": "Serum creatinine falls to 84.7% of non-pregnant in trimester 1 and 76.4% in trimester 2. Use 0.847 for a first-trimester twin and 0.764 from the second trimester onward." }
+      ],
+      "hard_rule": "ACE inhibitors and ARBs are contraindicated in pregnancy (fetal renal injury, oligohydramnios, skull hypoplasia, death). Both lisinopril and losartan in this drug set trigger it. This preset must produce an unconditional REJECT, not a dose adjustment, regardless of what the physiology modifiers do. Agent C owns the rule (risk.fetal_toxicity must render as a hard block, never as a percentage); this preset must never be allowed to soften it.",
+      "evidence": ["PREG_PHYSIOLOGY", "PREG_EGFR"]
+    },
+
+    "cad_prior_stroke": {
+      "label": "Coronary artery disease / prior stroke",
+      "confidence": "low",
+      "modifiers": [],
+      "confidence": "high (as a negative finding)",
+      "satisfies_condition_keys": ["cad", "chronic_coronary_disease", "prior_stroke"],
+      "note": "DELIBERATELY EMPTY of physiological modifiers. A dedicated literature search found NO resting haemodynamic deltas for chronic coronary disease. The 2023 AHA/ACC Chronic Coronary Disease guideline is framed entirely around risk stratification and therapy, not resting haemodynamic shifts. A stable CAD patient's resting cardiac output, SVR and electrolytes are not systematically different from a matched patient without CAD. Inventing modifiers here would be fabrication. Its entire effect in PilSim is on the rules layer and on long-horizon risk scoring.",
+      "only_quantitative_anchor": { "statement": "Beta-blockers are indicated for reduced left ventricular ejection fraction (LVEF < 50%) and are not recommended in chronic coronary disease with LVEF above 50%.", "prov": "AHA_ACC_2023_CCD" },
+      "correction_to_team_draft": "The team's draft scope (mission brief section 1.3) says 'Coronary artery disease / prior stroke — beta-blocker or ACE preferred'. Per the 2023 guideline that is only half right: beta-blockers are NOT recommended for chronic coronary disease when LVEF is above 50%. If the twin has preserved ejection fraction, the model should not award metoprolol a compelling-indication bonus for CAD alone. Flagged for Agent C.",
+      "correction_prov": "AHA_ACC_2023_CCD",
+      "coupling_rule": "If reduced ejection fraction accompanies the CAD, apply the hfref preset — that is where the physiology lives.",
+      "flags_for_rules_engine": ["compelling_indication_beta_blocker_if_lvef_under_50", "compelling_indication_ace_inhibitor", "secondary_prevention"],
+      "evidence": ["AHA_ACC_2023_CCD"]
+    },
+
+    "hepatic_impairment": {
+      "label": "Hepatic impairment (cirrhosis, by Child-Pugh class)",
+      "satisfies_condition_keys": ["hepatic_impairment", "cirrhosis"],
+      "confidence": "medium",
+      "parameterised_by": "child_pugh_class (A | B | C)",
+      "added_because": "Not in the team's original nine, but two of the five modelled drugs (amlodipine, metoprolol) are hepatically cleared and losartan requires hepatic activation to E-3174. Without this preset the liver has no failure mode and the CYP animation has nothing to degrade.",
+      "normal_hepatic_flow_reference": {
+        "total_mL_min": [1200, 1800], "pct_of_cardiac_output": [20, 25],
+        "portal_vein_mL_min": [700, 800], "portal_fraction": 0.70,
+        "hepatic_artery_mL_min": [350, 550], "arterial_fraction": 0.30,
+        "per_liver_mass": "100-130 mL/min per 100 g of liver", "per_body_weight": "30 mL/min per kg",
+        "prov": "HEPATIC_FLOW"
+      },
+      "modifiers_by_class": {
+        "_prov": "CIRRHOSIS_PBPK",
+        "_prov_note": "All fractions below are 'fraction of healthy control' as tabulated in a published cirrhosis PBPK population model (Table 1). This REPLACES an earlier set of pure estimates.",
+        "_derived_total_hepatic_flow": "total_flow_fraction = 0.70 * Qpv_fraction + 0.30 * Qha_fraction. A: 0.70x0.91 + 0.30x1.40 = 1.06. B: 0.70x0.63 + 0.30x1.62 = 0.93. C: 0.70x0.55 + 0.30x1.91 = 0.96. This is counter-intuitive and worth showing in the demo: TOTAL hepatic blood flow is nearly preserved in cirrhosis because arterial flow rises to compensate for the collapsing portal flow (the hepatic arterial buffer response). What actually falls is intrinsic metabolic capacity, not perfusion.",
+        "A": [
+          { "target": "portal_vein_flow_fraction", "op": "set", "value": 0.91 },
+          { "target": "hepatic_artery_flow_fraction", "op": "set", "value": 1.40 },
+          { "target": "hepatic_blood_flow", "op": "multiply", "value": 1.06 },
+          { "target": "cardiac_output", "op": "multiply", "value": 1.16 },
+          { "target": "liver_mass_g", "op": "multiply", "value": 0.81 },
+          { "target": "cyp3a_activity_multiplier", "op": "multiply", "value": 0.59 },
+          { "target": "albumin_g_dL", "op": "set", "value": 4.11 },
+          { "target": "egfr_ckdepi2021", "op": "multiply", "value": 0.76 }
+        ],
+        "B": [
+          { "target": "portal_vein_flow_fraction", "op": "set", "value": 0.63 },
+          { "target": "hepatic_artery_flow_fraction", "op": "set", "value": 1.62 },
+          { "target": "hepatic_blood_flow", "op": "multiply", "value": 0.93 },
+          { "target": "cardiac_output", "op": "multiply", "value": 1.32 },
+          { "target": "liver_mass_g", "op": "multiply", "value": 0.65 },
+          { "target": "cyp3a_activity_multiplier", "op": "multiply", "value": 0.39 },
+          { "target": "albumin_g_dL", "op": "set", "value": 3.39 },
+          { "target": "egfr_ckdepi2021", "op": "multiply", "value": 0.63 }
+        ],
+        "C": [
+          { "target": "portal_vein_flow_fraction", "op": "set", "value": 0.55 },
+          { "target": "hepatic_artery_flow_fraction", "op": "set", "value": 1.91 },
+          { "target": "hepatic_blood_flow", "op": "multiply", "value": 0.96 },
+          { "target": "cardiac_output", "op": "multiply", "value": 1.40 },
+          { "target": "liver_mass_g", "op": "multiply", "value": 0.53 },
+          { "target": "cyp3a_activity_multiplier", "op": "multiply", "value": 0.25 },
+          { "target": "albumin_g_dL", "op": "set", "value": 2.63 },
+          { "target": "egfr_ckdepi2021", "op": "multiply", "value": 0.60 }
+        ]
+      },
+      "additional_modifiers_all_classes": [
+        { "target": "svr_dyn_s_cm5", "op": "multiply", "value": 0.75, "prov": { "type": "DERIVED", "from": "Not tabulated in the cirrhosis PBPK source. Inferred from the fact that cardiac output rises 16-40% while cirrhotic patients are typically normotensive or hypotensive — for mean arterial pressure to stay flat or fall while cardiac output rises 32% (Child-Pugh B), SVR must fall by at least a quarter. This is the hyperdynamic splanchnic-vasodilation circulation of cirrhosis and it is why cirrhotic patients tolerate antihypertensives poorly." } },
+        { "target": "cyp2c9_pathway_multiplier", "op": "multiply", "value": 0.60, "prov": { "type": "ESTIMATED", "basis": "NOT_FOUND: the cirrhosis PBPK source tabulates CYP3A4 intrinsic clearance by Child-Pugh class but NOT CYP2C9 or CYP2C19. 0.60 for Child-Pugh B is an estimate interpolated between the CYP3A4 value (0.39) and no impairment, reflecting that CYP2C9 is generally less severely affected than CYP3A4 in cirrhosis. Reduced CYP2C9 capacity impairs losartan-to-E-3174 conversion, mimicking a poor-metaboliser phenotype pharmacologically rather than genetically." } }
+      ],
+      "not_found": [
+        { "quantity": "CYP2C9 and CYP2C19 abundance by Child-Pugh class", "status": "NOT_FOUND", "note": "Only CYP3A4 is tabulated in the located source." },
+        { "quantity": "portosystemic shunt fraction by Child-Pugh class as explicit numbers", "status": "NOT_FOUND", "note": "The Simcyp cirrhosis population library is described only qualitatively in the literature." },
+        { "quantity": "Child-Pugh scoring criteria cut-points (bilirubin/albumin/INR/ascites/encephalopathy)", "status": "NOT_FOUND", "note": "Not retrieved within budget. The albumin values above (41.1 / 33.9 / 26.3 g/L by class) come from the PBPK table, not from the scoring criteria." }
+      ],
+      "evidence": ["CIRRHOSIS_PBPK", "HEPATIC_FLOW"]
+    }
+  },
+
+  "pharmacogenomic_presets": {
+    "_note": "These are twin state, not rules. They set the enzyme-pathway multipliers that the PK layer consumes. The population frequencies let the UI offer a realistic 'sample a random patient' button and let Agent E sample a virtual population.",
+
+    "CYP2D6": {
+      "affects_substances": ["metoprolol"],
+      "phenotype_bins": {
+        "Ultrarapid": "activity score > 2.25",
+        "Normal": "1.25 <= activity score <= 2.25",
+        "Intermediate": "0 < activity score < 1.25",
+        "Poor": "activity score = 0",
+        "Indeterminate": "one or two uncertain-function alleles",
+        "prov": "CPIC_BB_2024",
+        "prov_stated": "CPIC 2024 beta-blocker guideline, Table 1 'Assignment of predicted CYP2D6 phenotype based on genotype', verbatim."
+      },
+      "revision_note": "The activity-score-to-phenotype mapping was revised by the 2019 CPIC/DPWG consensus. Activity score 1.0 is now INTERMEDIATE (it was previously NORMAL) and CYP2D6*10 now carries an activity value of 0.25 (previously 0.5). Because *10 is common in Central/South Asian and East Asian populations, using the old mapping shifts a large fraction of those virtual patients into the wrong phenotype. Verify any implementation against the bins above.",
+      "cpic_recommendations": {
+        "Ultrarapid": { "implication": "Increased metabolism of metoprolol leading to decreased drug concentrations; however, it is unclear whether this results in clinically significant changes in heart rate, blood pressure, or clinical outcomes.", "recommendation": "No recommendation for metoprolol therapy due to insufficient evidence regarding diminished metoprolol effectiveness clinically.", "strength": "No recommendation" },
+        "Normal": { "implication": "Normal metabolism of metoprolol", "recommendation": "Initiate standard dosing.", "strength": "Strong" },
+        "Intermediate": { "implication": "Decreased metabolism of metoprolol leading to increased drug concentrations; however, this does not appear to translate into clinically significant changes in heart rate, blood pressure, or clinical outcomes.", "recommendation": "Initiate standard dosing.", "strength": "Moderate" },
+        "Poor": { "implication": "Decreased metabolism of metoprolol leading to markedly increased drug concentrations; this leads to greater heart rate and blood pressure reductions. The effect on clinical outcomes is unclear.", "recommendation": "Initiate therapy with lowest recommended starting dose. Carefully titrate dose upward to clinical effect or guideline-recommended dose; monitor more closely for bradycardia. Alternatively, consider selecting another beta-blocker.", "strength": "Moderate" },
+        "prov": "CPIC_BB_2024",
+        "prov_note": "Quoted verbatim from CPIC 2024 Table 2 'Dosing recommendations for metoprolol based on CYP2D6 phenotype'."
+      },
+      "model_binding": {
+        "pathway_multiplier": { "Poor": 0.0, "Intermediate": 0.5, "Normal": 1.0, "Ultrarapid": 1.6, "Indeterminate": 1.0 },
+        "f_cyp2d6_metoprolol": 0.80,
+        "resulting_auc_ratio_vs_normal": { "Poor": 5.0, "Intermediate": 1.67, "Normal": 1.0, "Ultrarapid": 0.81 },
+        "prov": "RUDESHEIM2020",
+        "prov_stated": "'CYP2D6 poor metabolizers (5.7% of US population) show approximately five-fold higher metoprolol exposure compared to CYP2D6 normal metabolizers.'",
+        "calibration_note": "f_cyp2d6 = 0.80 was chosen so that the Poor multiplier of 0 reproduces exactly the observed 5-fold AUC increase. The Intermediate and Ultrarapid multipliers are ESTIMATED; CPIC explicitly declines to make an ultrarapid recommendation for lack of evidence, so the 1.6 value should be treated as illustrative only and the UI should not present an ultrarapid prediction as confident.",
+        "reusable_model": "A validated whole-body PBPK model of metoprolol enantiomers with CYP2D6 drug-gene interaction is published in the Open Systems Pharmacology repository (Rudesheim 2020) — relevant to Agent E if higher fidelity is ever wanted."
+      },
+      "population_frequencies": {
+        "_units": "fraction of the population",
+        "_prov": "CPIC_FREQ_CYP2D6",
+        "_method": "The CPIC 'Phenotype frequency' sheet is published per activity score. These are the activity-score rows summed into the CPIC phenotype bins above. Rows are the CPIC values unmodified.",
+        "Central/South Asian": { "Ultrarapid": 0.0150, "Normal": 0.5810, "Intermediate": 0.2805, "Poor": 0.0235, "Indeterminate": 0.0999 },
+        "European": { "Ultrarapid": 0.0233, "Normal": 0.4919, "Intermediate": 0.3825, "Poor": 0.0650, "Indeterminate": 0.0373 },
+        "East Asian": { "Ultrarapid": 0.0085, "Normal": 0.5318, "Intermediate": 0.3847, "Poor": 0.0081, "Indeterminate": 0.0668 },
+        "Near Eastern": { "Ultrarapid": 0.0744, "Normal": 0.5654, "Intermediate": 0.3018, "Poor": 0.0220, "Indeterminate": 0.0374 },
+        "uzbekistan_note": "NOT_FOUND — no CYP2D6 allele- or phenotype-frequency dataset specific to Uzbekistan or to Uzbek populations was located. 'Central/South Asian' is the nearest CPIC biogeographic group and 'Near Eastern' is an equally defensible proxy; they differ materially (poor metaboliser 2.4% vs 2.2%, but ultrarapid 1.5% vs 7.4%). The UI must present the chosen group as an assumption, not as a fact about Uzbek patients."
+      }
+    },
+
+    "CYP2C9": {
+      "affects_substances": ["losartan"],
+      "phenotype_bins": {
+        "Normal": "activity score = 2",
+        "Intermediate": "activity score 1 or 1.5",
+        "Poor": "activity score 0 or 0.5",
+        "prov": "CPIC_FREQ_CYP2C9"
+      },
+      "model_binding": {
+        "pathway_multiplier_expr": "cyp2c9_activity_score / 2",
+        "f_cyp2c9_e3174_formation": 0.95,
+        "mechanism": "Losartan is a prodrug-like agent: roughly 14% of an oral dose is converted to the carboxylic acid metabolite E-3174 (EXP3174), which carries the majority of the AT1-receptor blockade. CYP2C9 performs most of that conversion, with a minor CYP3A4 contribution. A CYP2C9 poor metaboliser therefore has near-normal parent exposure but markedly reduced active-metabolite exposure — the reason PilSim can show a losartan patient who takes the drug faithfully and still does not respond.",
+        "mechanism_prov": { "type": "ESTIMATED", "basis": "The ~14% conversion fraction and the 10-40x relative AT1 potency of E-3174 vs losartan are widely quoted; NOT verified against a primary source or the Cozaar label within this agent's time budget. Agent B should confirm both from the FDA label before these numbers are shown to a judge. Flagged as NEEDS VERIFICATION." },
+        "observed_data": {
+          "meta_analysis": { "prov": "PARK2021_LOSARTAN", "stated": "CYP2C9 variant carriers vs *1/*1 (8 studies, 139 healthy subjects): losartan AUC0-inf mean difference +0.17 ug*h/mL (95% CI 0.04, 0.29); E-3174 AUC0-inf mean difference -0.35 ug*h/mL (95% CI -0.62, -0.08); E-3174 Cmax mean difference -0.13 ug/mL (95% CI -0.17, -0.09)" },
+          "genotype_detail": { "prov": "YASAR2002", "stated": "AUC(losartan)/AUC(E-3174) was higher in the subject with the CYP2C9*3/*3 genotype (30-fold) and also in the CYP2C9*1/*3 and *2/*3 groups (approximately 2- and 3-fold, respectively) compared with the CYP2C9*1/*1 group; urinary ratio approximately 40-fold higher in *3/*3 (n = 3)" }
+        },
+        "calibration_note": "With f_cyp2c9 = 0.95, an activity score of 0 leaves 5% of E-3174 formation via CYP3A4, i.e. a ~20-fold rise in the losartan/E-3174 ratio. Yasar observed 30-fold in plasma — but in a single *3/*3 subject, so the true value is very uncertain. The model deliberately under-shoots rather than over-shoots. The heterozygote predictions (AS 1.5 -> 1.14x ratio; AS 1.0 -> 1.35x) are LOWER than Yasar's observed 2-3x for *1/*3 and *2/*3, meaning the linear activity-score mapping understates heterozygote effect. This is a known, documented limitation, not an oversight."
+      },
+      "population_frequencies": {
+        "_units": "fraction of the population",
+        "_prov": "CPIC_FREQ_CYP2C9",
+        "_method": "CPIC 'Phenotype frequency' sheet, activity-score rows summed into phenotype bins (NM = AS 2; IM = AS 1.0 + 1.5; PM = AS 0 + 0.5).",
+        "Central/South Asian": { "Normal": 0.5962, "Intermediate": 0.3624, "Poor": 0.0377, "Indeterminate": 0.0038 },
+        "European": { "Normal": 0.6285, "Intermediate": 0.3453, "Poor": 0.0257, "Indeterminate": 0.0006 },
+        "East Asian": { "Normal": 0.8379, "Intermediate": 0.1516, "Poor": 0.0059, "Indeterminate": 0.0046 },
+        "Near Eastern": { "Normal": 0.6113, "Intermediate": 0.3591, "Poor": 0.0296, "Indeterminate": 0.0 },
+        "uzbekistan_note": "NOT_FOUND — no Uzbekistan-specific CYP2C9 frequency data located. Central/South Asian carries a notably higher poor-metaboliser fraction (3.8%) than East Asian (0.6%), so the choice of proxy group materially changes how often the losartan non-responder scenario appears in a sampled population."
+      }
+    },
+
+    "CYP3A4_CYP3A5": {
+      "affects_substances": ["amlodipine", "losartan (minor pathway)"],
+      "status": "NO ACTIONABLE PHARMACOGENOMIC PRESET",
+      "rationale": "There is no CPIC-level actionable genotype recommendation for amlodipine. Modelling a CYP3A5 genotype effect on amlodipine would give the demo a pharmacogenomic claim the evidence does not support. Instead, CYP3A capacity is exposed as a free multiplier (default 1.0) so that inhibitor/inducer scenarios and the hepatic-impairment preset can act on it.",
+      "prov": { "type": "ESTIMATED", "basis": "Absence of a CPIC guideline for amlodipine was confirmed by the CPIC guideline index; this is a negative finding, stated as such rather than filled with an invented effect size." }
+    }
+  },
+
+  "reference_individuals": {
+    "_prov": "ICRP89",
+    "_note": "Sanity anchors. If the pipeline is fed these inputs it must reproduce approximately these outputs; research/06-VALIDATION.md (Agent E) should turn this into a test.",
+    "icrp_reference_male": {
+      "inputs": { "age_years": 45, "sex": "male", "height_cm": 176, "weight_kg": 73, "hematocrit_frac": 0.47, "scr_mg_dL": 0.90 },
+      "icrp_stated": { "bsa_m2": 1.90, "blood_volume_L": 5.3, "plasma_volume_L": 3.0, "red_cell_volume_L": 2.3, "cardiac_output_L_min": 6.5, "liver_g": 1800, "kidneys_g": 310, "heart_tissue_g": 330, "brain_g": 1450, "lungs_tissue_g": 500, "skeletal_muscle_g": 29000, "adipose_g": 18200, "blood_g": 5600, "gfr_mL_min": 125, "renal_plasma_flow_mL_min": 700, "filtration_fraction": 0.18, "rbc_fraction_of_blood_volume": "about 43% (42-52%)" },
+      "model_computed": { "bsa_m2": 1.885, "bmi": 23.6, "lbw_kg": 58.0, "tbw_L": 41.5, "blood_volume_L": 5.00, "plasma_volume_L": 2.65, "cardiac_output_L_min": 6.45, "egfr_ckdepi2021": 100.2, "renal_blood_flow_mL_min": 1226, "renal_plasma_flow_mL_min": 650 },
+      "discrepancy_note": "Nadler under-predicts ICRP blood volume by ~6% and therefore plasma volume by ~12%. The model's plasma volume nonetheless sits inside the NBME 25-43 mL/kg reference interval. Documented rather than fudged."
+    },
+    "icrp_reference_female": {
+      "inputs": { "age_years": 45, "sex": "female", "height_cm": 163, "weight_kg": 60, "hematocrit_frac": 0.41, "scr_mg_dL": 0.70 },
+      "icrp_stated": { "bsa_m2": 1.66, "blood_volume_L": 3.9, "plasma_volume_L": 2.4, "red_cell_volume_L": 1.5, "cardiac_output_L_min": 5.9, "liver_g": 1400, "kidneys_g": 275, "heart_tissue_g": 250, "brain_g": 1300, "skeletal_muscle_g": 17500, "adipose_g": 22500, "blood_g": 4100, "rbc_fraction_of_blood_volume": "about 38% (37-48%)" },
+      "model_computed": { "bsa_m2": 1.653, "bmi": 22.6, "lbw_kg": 42.5, "tbw_L": 29.2, "blood_volume_L": 3.71, "plasma_volume_L": 2.19, "cardiac_output_L_min": 5.87, "egfr_ckdepi2021": 101.0 }
+    },
+    "icrp_regional_blood_flow_pct_of_cardiac_output": {
+      "_prov": "ICRP89",
+      "_prov_stated": "ICRP 89 section 7.7.2 p.142, 'Reference values for regional blood volumes and blood flow rates in adults'",
+      "kidneys": { "male": 19, "female": 17 },
+      "liver_total": { "male": 25.5, "female": 27.0 },
+      "liver_hepatic_arterial": { "male": 6.5, "female": 6.5 },
+      "heart_coronary": { "male": 4.0, "female": 5.0 },
+      "brain": { "male": 12, "female": 12 },
+      "skeletal_muscle": { "male": 17, "female": 12 },
+      "skin": { "male": 5.0, "female": 5.0 },
+      "adipose": { "male": 5.0, "female": 8.5 },
+      "small_intestine": { "male": 10, "female": 11 },
+      "large_intestine": { "male": 4.0, "female": 5.0 },
+      "stomach_oesophagus": { "male": 1.0, "female": 1.0 },
+      "pancreas": { "male": 1.0, "female": 1.0 },
+      "spleen": { "male": 3.0, "female": 3.0 },
+      "lungs_bronchial": { "male": 2.5, "female": 2.5 },
+      "skeleton": { "male": 5.0, "female": 5.0 },
+      "thyroid": { "male": 1.5, "female": 1.5 },
+      "adrenals": { "male": 0.3, "female": 0.3 },
+      "all_other": { "male": 1.39, "female": 1.92 },
+      "use": "Agent F can bind organ perfusion animation directly to cardiac_output_L_min multiplied by these fractions."
+    }
+  },
+
+  "rules_engine_binding": {
+    "_purpose": "Agent C's data/rules.json addresses patient state through its own namespaced vocabulary (`labs.*`, `vitals.*`, `demographic`, `phenotype`, `condition`). This section is the single authoritative translation between that vocabulary and the state-variable ids in this file. The coding agent must resolve every rule atom through this map. If a key is missing here, the rule cannot fire and that is a defect to report, not to paper over.",
+    "_contract": "resolve(namespacedKey) -> { stateVar: string|null, transform?: string, status: 'bound'|'external_input'|'unmodelled' }",
+
+    "labs": {
+      "egfr_ml_min_1_73": { "stateVar": "egfr_ckdepi2021", "status": "bound", "note": "The 1.73 m^2-INDEXED value, which is what guideline thresholds are written against. Do NOT bind this to egfr_absolute_mL_min." },
+      "serum_creatinine_mg_dl": { "stateVar": "scr_mg_dL", "status": "bound" },
+      "serum_k_mmol_l": { "stateVar": "serum_k_mmol_L", "status": "bound" },
+      "serum_na_mmol_l": { "stateVar": "serum_na_mmol_L", "status": "bound" },
+      "serum_urate_mg_dl": { "stateVar": "serum_urate_mg_dL", "status": "bound" },
+      "serum_calcium_mg_dl": { "stateVar": "serum_ca_mg_dL", "status": "bound" },
+      "urine_calcium_mg_day": { "stateVar": "urine_calcium_mg_day", "status": "bound" },
+      "uacr_mg_g": { "stateVar": "uacr_mg_g", "status": "bound" },
+      "fasting_glucose_mg_dl": { "stateVar": "fasting_glucose_mg_dL", "status": "bound" },
+      "hba1c_pct": { "stateVar": "hba1c_pct", "status": "bound" },
+      "ldl_mg_dl": { "stateVar": "ldl_mg_dL", "status": "bound" },
+      "triglycerides_mg_dl": { "stateVar": "triglycerides_mg_dL", "status": "bound" },
+      "alt_u_l": { "stateVar": "alt_u_L", "status": "bound" },
+      "serum_lithium_mmol_l": { "stateVar": "serum_lithium_mmol_L", "status": "external_input", "note": "User-entered only. The twin has no lithium PK and must not display a predicted lithium level." }
+    },
+    "vitals": {
+      "sbp_mmhg": { "stateVar": "sbp_mmHg", "status": "bound" },
+      "dbp_mmhg": { "stateVar": "dbp_mmHg", "status": "bound" },
+      "hr_bpm": { "stateVar": "heart_rate_bpm", "status": "bound" },
+      "map_mmhg": { "stateVar": "map_mmHg", "status": "bound" },
+      "cardiac_output_l_min": { "stateVar": "cardiac_output_L_min", "status": "bound" },
+      "lvef_pct": { "stateVar": "lvef_pct", "status": "bound" },
+      "svr_dyn_s_cm5": { "stateVar": "svr_dyn_s_cm5", "status": "bound" },
+      "plasma_volume_l": { "stateVar": "plasma_volume_L", "status": "bound" }
+    },
+    "demographic": {
+      "age_years": { "stateVar": "age_years", "status": "bound" },
+      "sex": { "stateVar": "sex", "status": "bound" },
+      "weight_kg": { "stateVar": "weight_kg", "status": "bound" },
+      "bmi": { "stateVar": "bmi", "status": "bound" },
+      "pregnant": { "stateVar": "pregnant", "status": "bound" },
+      "lactating": { "stateVar": "lactating", "status": "bound" }
+    },
+    "phenotype": {
+      "_note": "Agent C's rules compare phenotype against the short codes PM / IM / NM / UM. This file's pipeline produces long names. Apply this transform.",
+      "cyp2d6": { "stateVar": "cyp2d6_phenotype", "status": "bound", "transform": "{ Poor: 'PM', Intermediate: 'IM', Normal: 'NM', Ultrarapid: 'UM', Indeterminate: 'NM' }[cyp2d6_phenotype]", "transform_caveat": "Indeterminate is mapped to NM so that a rule does not silently fail to fire. The UI must show 'phenotype indeterminate — treated as normal metabolizer' rather than asserting NM." },
+      "cyp2c9": { "stateVar": "cyp2c9_phenotype", "status": "bound", "transform": "{ Poor: 'PM', Intermediate: 'IM', Normal: 'NM' }[cyp2c9_phenotype]" },
+      "cyp3a4": { "stateVar": null, "status": "unmodelled", "transform": "always 'NM'", "note": "No actionable CYP3A4/5 genotype is modelled — see pharmacogenomic_presets.CYP3A4_CYP3A5. Any rule keyed on cyp3a4 phenotype will therefore only ever match NM. Agent C should key CYP3A interactions on co-medication (drug_class cyp3a4_inhibitor_strong), not on phenotype." }
+    },
+    "condition_keys": {
+      "_note": "Every `condition` key Agent C's rules use, and where it resolves. `preset` keys carry physiological modifiers; `flag` keys are booleans with no physiology (allergies, enzyme deficiencies, dietary status) — deliberately so, because inventing haemodynamic shifts for a sulfonamide allergy would be fabrication.",
+      "ckd": { "kind": "preset", "preset": "ckd" },
+      "hfref": { "kind": "preset", "preset": "hfref" },
+      "asthma": { "kind": "preset", "preset": "asthma_copd" },
+      "copd": { "kind": "preset", "preset": "asthma_copd" },
+      "t2dm": { "kind": "preset", "preset": "t2dm" },
+      "gout": { "kind": "preset", "preset": "gout" },
+      "obesity_metabolic": { "kind": "preset", "preset": "obesity_metabolic" },
+      "cad_prior_stroke": { "kind": "preset", "preset": "cad_prior_stroke" },
+      "hepatic_impairment": { "kind": "preset", "preset": "hepatic_impairment" },
+      "acute_decompensated_hf": { "kind": "flag", "physiology": "none", "note": "An acute state the twin does not simulate; it gates rules only. If it is set, the UI should say the simulation does not represent decompensation." },
+      "cardiogenic_shock": { "kind": "flag", "physiology": "none", "note": "Out of scope for a resting-steady-state twin; rules gate only." },
+      "anuria": { "kind": "flag", "physiology": "none", "linked_state": "Should be mutually exclusive with urine_output_mL_day > 100; the UI should enforce that." },
+      "av_block_2_3": { "kind": "flag", "physiology": "none" },
+      "sick_sinus_syndrome": { "kind": "flag", "physiology": "none" },
+      "severe_bradycardia": { "kind": "flag", "physiology": "none", "linked_state": "heart_rate_bpm; the UI should derive this from HR rather than let the two disagree." },
+      "pheochromocytoma_untreated": { "kind": "flag", "physiology": "none" },
+      "history_ace_angioedema": { "kind": "flag", "physiology": "none" },
+      "sulfonamide_hypersensitivity": { "kind": "flag", "physiology": "none" },
+      "aspirin_hypersensitivity": { "kind": "flag", "physiology": "none" },
+      "lactose_intolerance": { "kind": "flag", "physiology": "none" },
+      "congenital_lactase_deficiency": { "kind": "flag", "physiology": "none" },
+      "galactosemia": { "kind": "flag", "physiology": "none" },
+      "glucose_galactose_malabsorption": { "kind": "flag", "physiology": "none" },
+      "low_sodium_diet": { "kind": "flag", "physiology": "none", "note": "Dietary sodium is not simulated — see validity_limits.not_modelled. This is a rules flag for the excipient sodium-content rule only." }
+    },
+    "risk_channels": {
+      "_purpose": "Agent C's `risk_set` effect writes to `risk.<name>`. This is the registry of every such channel, so the engine has a typed place to store them and Agent F has a fixed list to bind animation to. Values are probabilities in [0,1] unless marked otherwise.",
+      "_prov": { "type": "ESTIMATED", "basis": "These are model output channels, not measured physiology. Their baseline and drug-driven values are set by Agent C's rules, which carry their own citations. This registry contributes only the names, ranges and organ bindings." },
+      "channels": [
+        { "id": "risk.cough", "organ": "airway", "internal_state": "cough_index" },
+        { "id": "risk.angioedema", "organ": "airway/face", "internal_state": null, "note": "Rare and abrupt; represented as a probability only, not as a physiological trajectory." },
+        { "id": "risk.hyperkalemia", "organ": "kidney/heart", "internal_state": "serum_k_mmol_L" },
+        { "id": "risk.hypokalemia", "organ": "kidney/heart", "internal_state": "serum_k_mmol_L" },
+        { "id": "risk.hyponatremia", "organ": "kidney/brain", "internal_state": "serum_na_mmol_L" },
+        { "id": "risk.gout_flare", "organ": "joint", "internal_state": "serum_urate_mg_dL" },
+        { "id": "risk.aki", "organ": "kidney", "internal_state": "egfr_ckdepi2021" },
+        { "id": "risk.peripheral_edema", "organ": "lower limb", "internal_state": "ankle_edema_index" },
+        { "id": "risk.bradycardia", "organ": "heart", "internal_state": "heart_rate_bpm" },
+        { "id": "risk.bronchospasm", "organ": "bronchiole", "internal_state": "bronchoconstriction_index" },
+        { "id": "risk.orthostatic_hypotension", "organ": "brain perfusion", "internal_state": "orthostatic_sbp_drop_mmHg" },
+        { "id": "risk.fetal_toxicity", "organ": "fetus", "internal_state": null, "note": "NOT a graded risk in this model. It is the output of an absolute contraindication rule and must be rendered as a hard block, never as a percentage." },
+        { "id": "risk.hypoglycemia_unawareness", "organ": "brain/adrenergic", "internal_state": null },
+        { "id": "risk.new_onset_diabetes", "organ": "pancreas/metabolic", "internal_state": "fasting_glucose_mg_dL", "horizon": "long only — meaningless on an acute run" },
+        { "id": "risk.nonmelanoma_skin_cancer", "organ": "skin", "internal_state": null, "horizon": "long only — years" },
+        { "id": "risk.acute_angle_closure_glaucoma", "organ": "eye", "internal_state": null, "note": "Idiosyncratic; probability channel only." }
+      ]
+    }
+  },
+
+  "machine_readable_physiology": {
+    "_note": "Bake this at build time from the US EPA httk TSVs rather than fetching at runtime. Values below were downloaded and parsed on 2026-08-17. Volumes are L per kg body weight; flows are mL/min per kg^(3/4) — multiply by Math.pow(weight_kg, 0.75) to get mL/min for an individual.",
+    "_prov": "HTTK",
+    "_flow_prov": "DAVIES_MORRIS_1993",
+    "_volume_prov": { "type": "DERIVED", "from": "httk cites ILSI-RSI 1994 in-band for every human organ volume row." },
+    "whole_body": {
+      "total_body_water_mL_per_kg": 600,
+      "plasma_volume_mL_per_kg": 42.86,
+      "cardiac_output_mL_min_per_kg_0_75": 231.4,
+      "gfr_mL_min_per_kg_0_75": 5.165,
+      "urine_mL_min_per_kg_0_75": 0.04017,
+      "bile_mL_min_per_kg_0_75": 0.01004,
+      "hematocrit_fraction": 0.44,
+      "plasma_albumin_g_per_mL": 0.0418,
+      "total_plasma_protein_g_per_mL": 0.074,
+      "plasma_a1_agp_g_per_mL": 0.0018,
+      "average_bw_kg": 70,
+      "body_temperature_C": 37,
+      "small_intestine_mean_residence_time_min": 199.2,
+      "small_intestine_radius_cm": 1.75,
+      "pulmonary_ventilation_L_h_per_kg_0_75": 27.75
+    },
+    "organs": [
+      { "tissue": "Adipose", "vol_L_per_kg": 0.2086, "flow_mL_min_per_kg_0_75": 10.74 },
+      { "tissue": "Bone", "vol_L_per_kg": 0.07231, "flow_mL_min_per_kg_0_75": 9.719 },
+      { "tissue": "Brain", "vol_L_per_kg": 0.01931, "flow_mL_min_per_kg_0_75": 28.93 },
+      { "tissue": "Gut", "vol_L_per_kg": 0.0158, "flow_mL_min_per_kg_0_75": 47.52 },
+      { "tissue": "Heart", "vol_L_per_kg": 0.004563, "flow_mL_min_per_kg_0_75": 9.917 },
+      { "tissue": "Kidney", "vol_L_per_kg": 0.00419, "flow_mL_min_per_kg_0_75": 51.24 },
+      { "tissue": "Liver", "vol_L_per_kg": 0.02448, "flow_mL_min_per_kg_0_75": 59.92 },
+      { "tissue": "Lung", "vol_L_per_kg": 0.007235, "flow_mL_min_per_kg_0_75": 5.785 },
+      { "tissue": "Muscle", "vol_L_per_kg": 0.3842, "flow_mL_min_per_kg_0_75": 30.99 },
+      { "tissue": "Skin", "vol_L_per_kg": 0.0332, "flow_mL_min_per_kg_0_75": 12.4 },
+      { "tissue": "Spleen", "vol_L_per_kg": 0.002467, "flow_mL_min_per_kg_0_75": 3.182 },
+      { "tissue": "Thyroid", "vol_L_per_kg": 0.0003, "flow_mL_min_per_kg_0_75": 3.7, "flow_prov": { "type": "DERIVED", "from": "httk cites ILSI-RSI 1994 rather than Davies and Morris for this one row." } },
+      { "tissue": "Rest", "vol_L_per_kg": 0.05182, "flow_mL_min_per_kg_0_75": 4.19 }
+    ],
+    "cross_check_at_70kg": {
+      "kg_0_75": 24.2,
+      "cardiac_output_L_min": 5.60,
+      "gfr_mL_min": 125.0,
+      "plasma_volume_L": 3.00,
+      "kidney_flow_mL_min": 1240,
+      "kidney_pct_of_cardiac_output": 22.1,
+      "liver_flow_mL_min": 1450,
+      "liver_pct_of_cardiac_output": 25.9,
+      "verdict": "httk reproduces the textbook GFR of 125 mL/min and a plasma volume of 3.0 L exactly, and its liver fraction (25.9%) matches ICRP 89's 25.5%. Its kidney fraction (22.1%) sits between ICRP's 19% and the 20-25% usually quoted."
+    },
+    "discrepancy_with_icrp": {
+      "cardiac_output": "httk's allometric form gives 5.60 L/min at 70 kg; ICRP 89 states 6.5 L/min for the 73 kg reference male. That is a 14% difference and it is real, not an error: httk uses a Davies-and-Morris allometric average across a mixed population, while ICRP defines a single sex-specific reference individual.",
+      "resolution": "This model uses the ICRP sex-specific BSA-scaled value (derivation_pipeline step 19) as primary, because sex-specific cardiac output matters for a twin whose user picks a sex. The httk allometric form is retained as a cross-check and as the fallback if a sex-agnostic scaling is ever wanted: cardiac_output_mL_min = 231.4 * Math.pow(weight_kg, 0.75). The engine must not mix the two."
+    },
+    "use_for_agent_f": "The organ table above is the direct binding surface for the organ animation: perfusion of organ X at time t = flow_mL_min_per_kg_0_75[X] * weight_kg^0.75 * (cardiac_output_L_min(t) / cardiac_output_L_min(baseline)). That gives every rendered organ a numerically defensible, citable perfusion value that responds to the drug."
+  },
+
+  "validity_limits": {
+    "population": "Adults 18-95. No paediatric maturation, no neonatal or geriatric-frailty-specific PK.",
+    "not_modelled": [
+      "Pulmonary circulation and right-heart mechanics — a single systemic loop only.",
+      "Regional autoregulation (cerebral, coronary, renal myogenic) — organ flows are fixed fractions of cardiac output, except where a preset overrides them.",
+      "Acid-base chemistry beyond a bicarbonate state variable.",
+      "Circadian rhythm in blood pressure — no dipper/non-dipper pattern.",
+      "Sodium and water intake as an input; dietary sodium is folded into the baseline rather than simulated.",
+      "Any drug outside the five modelled substances, including the patient's existing background therapy.",
+      "Adherence.",
+      "Pharmacodynamic tolerance beyond the explicit RAAS and baroreflex counter-regulation."
+    ],
+    "equation_validity": [
+      { "equation": "CKD-EPI 2021", "invalid_when": ["pregnancy", "non-steady-state creatinine / acute kidney injury", "extremes of muscle mass (amputation, bodybuilding, severe sarcopenia)", "creatinine assay not IDMS-traceable"], "ui_action": "Show the eGFR greyed out with an explicit 'not valid in this patient' badge rather than hiding it." },
+      { "equation": "Watson TBW", "invalid_when": ["morbid obesity", "oedematous states including HFrEF congestion and pregnancy"], "ui_action": "Flag as approximate." },
+      { "equation": "Nadler blood volume", "invalid_when": ["pregnancy", "extremes of BMI"], "ui_action": "Flag as approximate." },
+      { "equation": "MAP = DBP + PP/3", "invalid_when": ["heart rate above about 100 bpm, where the systolic fraction of the cardiac cycle grows and the 1/3 weighting under-estimates MAP"], "ui_action": "None; error is a few mmHg." },
+      { "equation": "SV/PP arterial compliance", "invalid_when": ["significant aortic regurgitation or stenosis", "large wave-reflection differences between central and peripheral pressure"], "ui_action": "None; it is a lumped estimate by design." },
+      { "equation": "Janmahasatian LBW", "invalid_when": ["BMI below about 16"], "ui_action": "Clamp and flag." }
+    ],
+    "hard_output_clamps": {
+      "_purpose": "The engine must clamp these before rendering. An unclamped model can produce a negative blood pressure and a judge will see it.",
+      "sbp_mmHg": [40, 300], "dbp_mmHg": [20, 180], "map_mmHg": [30, 200],
+      "heart_rate_bpm": [25, 220], "cardiac_output_L_min": [1.0, 15.0],
+      "svr_dyn_s_cm5": [200, 4000], "serum_k_mmol_L": [1.5, 9.0], "serum_na_mmol_L": [105, 170],
+      "egfr_ckdepi2021": [1, 200], "plasma_volume_L": [0.8, 8.0],
+      "prov": { "type": "ESTIMATED", "basis": "Chosen just outside the range of values compatible with life so that the clamp only fires on a numerical failure, never on a physiologically meaningful extreme. A clamp firing should raise a visible engine warning." }
+    },
+    "disclaimer": "PilSim is a research and education simulator. Its virtual human is a lumped-parameter approximation calibrated to population reference values, not to any individual. It cannot predict what a drug will do in a real patient, it has not been validated against clinical outcomes, and it must not be used to prescribe, withhold, or adjust therapy."
+  }
+}

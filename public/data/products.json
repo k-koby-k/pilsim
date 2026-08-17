@@ -1,0 +1,1571 @@
+{
+ "schema_version": "1.0",
+ "generated_by": "B2",
+ "generated_on": "2026-08-17",
+ "disclaimer": "RESEARCH SIMULATOR DATASET. NOT A CLINICAL DECISION TOOL. Not medical advice. Product compositions are US FDA labelling as of the retrieval date and vary by manufacturer, strength and country. Do not use to make prescribing decisions.",
+ "provenance_legend": {
+  "wrapper": "Numeric and list values use the Val wrapper defined in research/B1-notes.md section 1.2: {value, unit, range, cv_percent, n, distribution, provenance{status,tier,source,url,quote,retrieved,note}}.",
+  "status": {
+   "CITED": "source + url + verbatim quote + retrieval date present",
+   "ESTIMATED": "no source; note carries the one-line justification",
+   "NOT_FOUND": "searched and not located; note says where B2 looked"
+  },
+  "tier": {
+   "1": "regulatory product labeling (FDA via openFDA or DailyMed SPL) or a clinical practice guideline",
+   "2": "peer-reviewed pharmacokinetic / pharmacodynamic study or meta-analysis",
+   "3": "curated chemical database (PubChem, FDA GSRS, DrugBank open data)",
+   "4": "secondary summary \u2014 used only where 1-3 failed, and marked"
+  },
+  "composition_amounts": "Active-ingredient amounts are CITED to the product label. EXCIPIENT AMOUNTS ARE NOT_FOUND FOR EVERY PRODUCT: quantities of inactive ingredients are trade secret and appear in neither the label prose nor the structured SPL. B2 verified this across all 10 SPLs parsed \u2014 the <quantity> element is populated only for ACTIB/ACTIM active ingredients. Use the FDA IID max_amount_per_day_mg ceiling in each excipient record instead."
+ },
+ "counts": {
+  "products": 8,
+  "monotherapy": 5,
+  "alternate_formulation": 1,
+  "fixed_dose_combination": 2
+ },
+ "scope_note": "The brief asked for '5 modeled pill products'. B2 delivered EIGHT, and the extra three are deliberate. Five are the one-per-locked-drug monotherapy products (lisinopril, losartan, amlodipine, hydrochlorothiazide, metoprolol succinate ER). The sixth is metoprolol tartrate IR, included because the product's 'best formulation type' claim needs two real, base-matched, label-comparable formulations of one moiety side by side, and metoprolol is the ONLY drug in the set where that comparison exists at label level. The seventh and eighth are the two real fixed-dose combinations the shared context mandates (Zestoretic and Hyzaar) \u2014 these are what make 'a pill is a composition of substances' a fact about the world rather than a UI metaphor. If the team must have exactly five cards on the Pills page, drop nothing: show all eight and let the FDCs carry the pitch.",
+ "cross_file_dependencies": {
+  "substances": "Composition entries reference `substance_id` values in data/substances_part1.json (Agent B1: lisinopril, losartan, exp3174, amlodipine) and data/substances_part2.json (B2: hydrochlorothiazide, metoprolol, all excipients).",
+  "unresolved_ids": [
+   "potassium_content"
+  ],
+  "unresolved_note": "`potassium_content` is used as a COUNTER_ION composition role in the Cozaar and Hyzaar records and has no substance record in either part file. It is not an excipient and not an active. The lead should either add a minimal substance record for it or teach the loader to treat counter_ion rows as annotation. B2 flags rather than silently inventing a record outside its scope.",
+  "salt_basis_warning": "Metoprolol composition amounts are METOPROLOL BASE, not salt mass and not label strength. All three differ. Losartan composition amounts are LOSARTAN POTASSIUM as the label states \u2014 Agent B1 must confirm the losartan substance record uses the same basis or the doses will be ~8% off."
+ },
+ "products": [
+  {
+   "id": "prod_lisinopril_tablet",
+   "name": "Lisinopril tablet",
+   "product_class": "monotherapy",
+   "dosage_form": "immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Zestril (Upsher-Smith)",
+    "Prinivil (Merck, discontinued in the US)",
+    "Qbrelis (oral solution, separate product)"
+   ],
+   "generic_name": "lisinopril",
+   "available_strengths": {
+    "value": [
+     2.5,
+     5,
+     10,
+     20,
+     30,
+     40
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, ZESTRIL (lisinopril) tablets, Upsher-Smith, setid 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8.xml",
+     "quote": "Zestril is supplied as 2.5 mg, 5 mg, 10 mg, 20 mg, 30 mg and 40 mg tablets for oral administration.",
+     "retrieved": "2026-08-17",
+     "note": null
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 10.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, ZESTRIL (lisinopril) tablets, Upsher-Smith, setid 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8.xml",
+     "quote": "10 mg",
+     "retrieved": "2026-08-17",
+     "note": "B2 picked 10 mg as the demo default: the most commonly prescribed starting-to-mid dose and the strength that appears in the Zestoretic 10-12.5 FDC, so the mono and combination demos are comparable."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "lisinopril",
+     "role": "active",
+     "amount_mg": 10.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTRIL (lisinopril) tablets, Upsher-Smith, setid 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8.xml",
+      "quote": "10 mg tablets",
+      "retrieved": "2026-08-17",
+      "note": "Lisinopril is dosed as the dihydrate; label strengths are stated as anhydrous lisinopril."
+     }
+    },
+    {
+     "substance_id": "dibasic_calcium_phosphate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Excipient amounts are not disclosed. See substances_part2 excipient records."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "mannitol",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "corn_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "ferric_oxide_red",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Strength-dependent: present in 5/10/20/30 mg, absent from 2.5 mg."
+     }
+    },
+    {
+     "substance_id": "ferric_oxide_yellow",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Strength-dependent: present in the 40 mg tablet."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, ZESTRIL (lisinopril) tablets, Upsher-Smith, setid 838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/838c2d78-d2d8-4981-9ec9-e50ef9e1a5d8.xml",
+    "quote": "Inactive Ingredients: 2.5 mg tablets - calcium phosphate, magnesium stearate, mannitol, starch. 5 mg, 10 mg, 20 mg and 30 mg tablets - calcium phosphate, magnesium stearate, mannitol, red ferric oxide, starch. 40 mg tablets - calcium phosphate, magnesium stearate, mannitol, starch, yellow ferric oxide.",
+    "retrieved": "2026-08-17",
+    "note": "NOTE THE PER-STRENGTH VARIATION \u2014 the excipient set is not constant across strengths of the same brand. Cross-checked against the structured SPL <ingredient classCode=\"IACT\"> elements, which return the union across strengths: dibasic calcium phosphate dihydrate, ferric oxide red, ferric oxide yellow, magnesium stearate, mannitol, starch corn."
+   },
+   "patient_flags_from_excipients": [],
+   "lactose_free": true,
+   "lactose_free_note": "LACTOSE-FREE \u2014 mannitol is the filler. Safe in galactosaemia, unlike Cozaar/Hyzaar/Lopressor.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": 10.0,
+   "notes": "The simplest product in the set: one renally-cleared active, no CYP, no colorant sensitivity, lactose-free. Use it as the control arm in the demo."
+  },
+  {
+   "id": "prod_losartan_tablet",
+   "name": "Losartan potassium tablet",
+   "product_class": "monotherapy",
+   "dosage_form": "film-coated immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Cozaar (Organon)"
+   ],
+   "generic_name": "losartan potassium",
+   "available_strengths": {
+    "value": [
+     25,
+     50,
+     100
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, COZAAR (losartan potassium) tablets, Organon, setid 9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/9949448f-c3b9-44ee-94ed-c1aca8c90f39.xml",
+     "quote": "COZAAR is available as tablets for oral administration containing either 25 mg, 50 mg or 100 mg of losartan potassium",
+     "retrieved": "2026-08-17",
+     "note": null
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 50.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, COZAAR (losartan potassium) tablets, Organon, setid 9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/9949448f-c3b9-44ee-94ed-c1aca8c90f39.xml",
+     "quote": "50 mg",
+     "retrieved": "2026-08-17",
+     "note": "50 mg is the usual starting dose and the strength used in the Hyzaar 50/12.5 FDC."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "losartan",
+     "role": "active",
+     "amount_mg": 50.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, COZAAR (losartan potassium) tablets, Organon, setid 9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/9949448f-c3b9-44ee-94ed-c1aca8c90f39.xml",
+      "quote": "containing either 25 mg, 50 mg or 100 mg of losartan potassium",
+      "retrieved": "2026-08-17",
+      "note": "Strength is stated as the POTASSIUM SALT, not the free acid. Agent B1 should confirm which basis the losartan substance record uses."
+     }
+    },
+    {
+     "substance_id": "potassium_content",
+     "role": "counter_ion",
+     "amount_mg": 4.24,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, COZAAR (losartan potassium) tablets, Organon, setid 9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/9949448f-c3b9-44ee-94ed-c1aca8c90f39.xml",
+      "quote": "COZAAR 25 mg, 50 mg and 100 mg tablets contain potassium in the following amounts: 2.12 mg (0.054 mEq), 4.24 mg (0.108 mEq) and 8.48 mg (0.216 mEq), respectively.",
+      "retrieved": "2026-08-17",
+      "note": "CLINICALLY REAL AND OFTEN MISSED. The 50 mg tablet delivers 0.108 mEq potassium. Trivial against a 50-100 mEq daily dietary intake, so it must NOT trigger a hyperkalaemia warning on its own \u2014 but it is on the label precisely because clinicians ask. A good test that the safety engine warns proportionately. NOTE: potassium here is a COUNTER-ION of the active salt, not an excipient; B2 gave it its own composition role rather than forcing it into either category."
+     }
+    },
+    {
+     "substance_id": "microcrystalline_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "lactose_monohydrate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "pregelatinized_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "hydroxypropyl_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "hypromellose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat."
+     }
+    },
+    {
+     "substance_id": "titanium_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat opacifier."
+     }
+    },
+    {
+     "substance_id": "carnauba_wax",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "CONDITIONAL ingredient \u2014 the label says the tablets 'may also contain' carnauba wax."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, COZAAR (losartan potassium) tablets, Organon, setid 9949448f-c3b9-44ee-94ed-c1aca8c90f39",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/9949448f-c3b9-44ee-94ed-c1aca8c90f39.xml",
+    "quote": "the following inactive ingredients: microcrystalline cellulose, lactose hydrous, pregelatinized starch, magnesium stearate, hydroxypropyl cellulose, hypromellose, and titanium dioxide. ... COZAAR 25 mg, COZAAR 50 mg, and COZAAR 100 mg may also contain carnauba wax.",
+    "retrieved": "2026-08-17",
+    "note": "Structured SPL IACT elements agree and add carnauba wax and starch-corn."
+   },
+   "patient_flags_from_excipients": [
+    "lactose_intolerance",
+    "galactosaemia",
+    "not_vegan",
+    "eu_e171_regulatory_divergence"
+   ],
+   "lactose_free": false,
+   "lactose_free_note": "CONTAINS LACTOSE \u2014 absolute contraindication in classical galactosaemia. Switch to lisinopril, which is lactose-free.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": 50.0,
+   "notes": "Contrast product for the urate story: losartan LOWERS serum urate while hydrochlorothiazide raises it."
+  },
+  {
+   "id": "prod_amlodipine_tablet",
+   "name": "Amlodipine besylate tablet",
+   "product_class": "monotherapy",
+   "dosage_form": "immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Norvasc (Viatris Specialty)"
+   ],
+   "generic_name": "amlodipine besylate",
+   "available_strengths": {
+    "value": [
+     2.5,
+     5,
+     10
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, NORVASC (amlodipine besylate) tablets, Viatris, setid 7367289c-b0b0-466a-83e2-558e2985c29f",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/7367289c-b0b0-466a-83e2-558e2985c29f.xml",
+     "quote": "Tablets: 2.5 mg, 5 mg, and 10 mg",
+     "retrieved": "2026-08-17",
+     "note": "Strengths are expressed as amlodipine BASE, not besylate."
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 5.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, NORVASC (amlodipine besylate) tablets, Viatris, setid 7367289c-b0b0-466a-83e2-558e2985c29f",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/7367289c-b0b0-466a-83e2-558e2985c29f.xml",
+     "quote": "Tablets: 5 mg",
+     "retrieved": "2026-08-17",
+     "note": "5 mg is the usual starting dose."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "amlodipine",
+     "role": "active",
+     "amount_mg": 5.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, NORVASC (amlodipine besylate) tablets, Viatris, setid 7367289c-b0b0-466a-83e2-558e2985c29f",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/7367289c-b0b0-466a-83e2-558e2985c29f.xml",
+      "quote": "Tablets: 5 mg",
+      "retrieved": "2026-08-17",
+      "note": "Expressed as amlodipine base."
+     }
+    },
+    {
+     "substance_id": "microcrystalline_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "dibasic_calcium_phosphate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Anhydrous form, UNII L11K75P92J."
+     }
+    },
+    {
+     "substance_id": "sodium_starch_glycolate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, NORVASC (amlodipine besylate) tablets, Viatris, setid 7367289c-b0b0-466a-83e2-558e2985c29f",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/7367289c-b0b0-466a-83e2-558e2985c29f.xml",
+    "quote": "inactive ingredients: microcrystalline cellulose, dibasic calcium phosphate anhydrous, sodium starch glycolate, and magnesium stearate.",
+    "retrieved": "2026-08-17",
+    "note": "Only four excipients and no film coat \u2014 the simplest formulation in the whole dataset, and uncoloured, so no dye flags at all."
+   },
+   "patient_flags_from_excipients": [
+    "sodium_content"
+   ],
+   "lactose_free": true,
+   "lactose_free_note": "LACTOSE-FREE.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": 5.0,
+   "notes": "Uncoated, uncoloured, lactose-free, four excipients. The cleanest product for demonstrating that a pill with a simple composition can still have a complex pharmacology."
+  },
+  {
+   "id": "prod_hydrochlorothiazide_tablet",
+   "name": "Hydrochlorothiazide tablet",
+   "product_class": "monotherapy",
+   "dosage_form": "immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "no US brand tablet currently marketed",
+    "Microzide (12.5 mg capsule, brand discontinued)",
+    "Esidrix / HydroDIURIL (historical)"
+   ],
+   "generic_name": "hydrochlorothiazide",
+   "available_strengths": {
+    "value": [
+     12.5,
+     25,
+     50
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, Hydrochlorothiazide tablets USP, Aurobindo, setid 01f1f478-5493-439f-9b99-f4f82023781c",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/01f1f478-5493-439f-9b99-f4f82023781c.xml",
+     "quote": "Each tablet for oral administration contains 25 mg or 50 mg hydrochlorothiazide USP",
+     "retrieved": "2026-08-17",
+     "note": "12.5 mg exists as a separate ANDA (A-S Medication Solutions tablet and as a capsule)."
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 25.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, Hydrochlorothiazide tablets USP, Aurobindo, setid 01f1f478-5493-439f-9b99-f4f82023781c",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/01f1f478-5493-439f-9b99-f4f82023781c.xml",
+     "quote": "25 mg",
+     "retrieved": "2026-08-17",
+     "note": "25 mg is the WHO DDD and the dose the Tier-2 dose-response literature is anchored on."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "hydrochlorothiazide",
+     "role": "active",
+     "amount_mg": 25.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, Hydrochlorothiazide tablets USP, Aurobindo, setid 01f1f478-5493-439f-9b99-f4f82023781c",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/01f1f478-5493-439f-9b99-f4f82023781c.xml",
+      "quote": "Each tablet for oral administration contains 25 mg or 50 mg hydrochlorothiazide USP",
+      "retrieved": "2026-08-17"
+     }
+    },
+    {
+     "substance_id": "dibasic_calcium_phosphate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "lactose_monohydrate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "pregelatinized_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "fdc_yellow_6",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "As FD&C yellow No. 6 lake. HIGHEST-VALUE PATIENT FLAG IN THE DATASET."
+     }
+    },
+    {
+     "substance_id": "corn_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "colloidal_silicon_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, Hydrochlorothiazide tablets USP, Aurobindo, setid 01f1f478-5493-439f-9b99-f4f82023781c",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/01f1f478-5493-439f-9b99-f4f82023781c.xml",
+    "quote": "each tablet contains the following inactive ingredients: dibasic calcium phosphate, lactose monohydrate, pregelatinized starch, FD&C yellow No.6 lake, corn starch, colloidal silicon dioxide, and magnesium stearate.",
+    "retrieved": "2026-08-17",
+    "note": "MANUFACTURER-DEPENDENT. B2 pulled five different HCTZ SPLs and got five DIFFERENT excipient lists: Aurobindo (above); A-S Medication Solutions 12.5 mg tablet (calcium stearate, corn starch, FD&C Yellow #6, lactose monohydrate, pregelatinized starch, sodium lauryl sulfate, stearic acid); ScieGen (microcrystalline cellulose, lactose anhydrous, pregelatinized starch, sodium lauryl sulfate, silicon dioxide, magnesium stearate \u2014 NO DYE); A-S 12.5 mg CAPSULE (colloidal silicon dioxide, corn starch, lactose monohydrate, magnesium stearate + gelatin shell with titanium dioxide, sodium lauryl sulfate, FD&C Blue #1, FD&C Red #3 + black printing ink); Bryant Ranch (FD&C yellow #6, lactose anhydrous, magnesium stearate, microcrystalline cellulose, sodium starch glycolate, stearic acid). THIS IS THE SINGLE STRONGEST EMPIRICAL ARGUMENT FOR THE PILLS PAGE: the molecule is identical, the pill is not, and only one of those five is safe for an azo-dye-sensitive asthmatic."
+   },
+   "patient_flags_from_excipients": [
+    "azo_dye_sensitivity",
+    "aspirin_sensitivity_cross_reactivity",
+    "lactose_intolerance",
+    "galactosaemia",
+    "not_vegan"
+   ],
+   "lactose_free": false,
+   "lactose_free_note": "CONTAINS LACTOSE (this manufacturer).",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": 25.0,
+   "notes": "THE MOST INTERESTING PRODUCT IN THE SET FOR THE SAFETY DEMO. Active raises urate (gout reject) and drops potassium; the DYE independently threatens azo-sensitive asthmatics. Two unrelated harm pathways in one 25 mg tablet, one from the active and one from an excipient."
+  },
+  {
+   "id": "prod_metoprolol_succinate_er_tablet",
+   "name": "Metoprolol succinate extended-release tablet",
+   "product_class": "monotherapy",
+   "dosage_form": "extended-release tablet (multiple-unit pellet system)",
+   "route": "oral",
+   "reference_brand_names": [
+    "Toprol-XL (Melinta Therapeutics)"
+   ],
+   "generic_name": "metoprolol succinate",
+   "available_strengths": {
+    "value": [
+     25,
+     50,
+     100,
+     200
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+     "quote": "The tablets contain 23.75, 47.5, 95 and 190 mg of metoprolol succinate equivalent to 25, 50, 100 and 200 mg of metoprolol tartrate, USP, respectively.",
+     "retrieved": "2026-08-17",
+     "note": "STRENGTHS ARE LABELLED AS METOPROLOL TARTRATE EQUIVALENT. The actual succinate content is lower. Any code that treats the label strength as the salt mass will be wrong by 5%."
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 50.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+     "quote": "50 mg",
+     "retrieved": "2026-08-17",
+     "note": "Label strength (tartrate equivalent). Actual succinate content 47.5 mg; metoprolol BASE content 47.5 x 0.819 = 38.9 mg. Use the base mass for PK."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "metoprolol",
+     "role": "active",
+     "amount_mg": 38.9,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+      "quote": "The tablets contain 23.75, 47.5, 95 and 190 mg of metoprolol succinate equivalent to 25, 50, 100 and 200 mg of metoprolol tartrate",
+      "retrieved": "2026-08-17",
+      "note": "amount_mg is METOPROLOL BASE, computed by B2: 47.5 mg succinate x 0.819 free-base fraction = 38.9 mg base. Salt mass 47.5 mg; label strength 50 mg tartrate-equivalent. All three numbers are different and the product must not confuse them."
+     },
+     "salt_form": "metoprolol succinate",
+     "salt_amount_mg": 47.5,
+     "label_strength_mg": 50.0
+    },
+    {
+     "substance_id": "hypromellose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Label prose says 'cellulose compounds'; the structured SPL resolves this to hypromellose."
+     }
+    },
+    {
+     "substance_id": "paraffin",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "RATE-CONTROLLING. This is the excipient that makes the product extended-release."
+     }
+    },
+    {
+     "substance_id": "polyethylene_glycol",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "PEG 6000, UNII 30IQX730WE."
+     }
+    },
+    {
+     "substance_id": "colloidal_silicon_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "sodium_stearyl_fumarate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Chosen over magnesium stearate because it does not retard pellet dissolution."
+     }
+    },
+    {
+     "substance_id": "titanium_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat opacifier."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+    "quote": "Inactive ingredients: silicon dioxide, cellulose compounds, sodium stearyl fumarate, polyethylene glycol, titanium dioxide, paraffin.",
+    "retrieved": "2026-08-17",
+    "note": "Structured SPL IACT elements resolve 'cellulose compounds' to HYPROMELLOSE and 'polyethylene glycol' to POLYETHYLENE GLYCOL 6000. NOT ONE EXCIPIENT IS SHARED WITH THE IMMEDIATE-RELEASE LOPRESSOR TABLET except titanium dioxide \u2014 same molecule, completely different formulation science."
+   },
+   "patient_flags_from_excipients": [
+    "sodium_content",
+    "eu_e171_regulatory_divergence"
+   ],
+   "lactose_free": true,
+   "lactose_free_note": "LACTOSE-FREE \u2014 unlike Lopressor IR, which contains lactose monohydrate. A real, citable reason to prefer the ER product in a galactosaemic patient.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": 50.0,
+   "formulation_pk": {
+    "value": 0.77,
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+     "quote": "At steady state the average bioavailability of metoprolol following administration of metoprolol succinate extended-release tablets, across the dosage range of 50 to 400 mg once daily, was 77% relative to the corresponding single or divided doses of conventional metoprolol.",
+     "retrieved": "2026-08-17",
+     "note": "Relative bioavailability vs IR. Peak plasma levels average one-quarter to one-half of IR. THIS PAIR OF NUMBERS IS THE ONLY DIRECT, LABEL-LEVEL IR-vs-ER COMPARISON IN THE WHOLE PILSIM DATASET \u2014 it is what unlocks Agent F's 'best formulation type' claim for metoprolol, and only for metoprolol."
+    }
+   },
+   "approved_indications": {
+    "value": [
+     "hypertension",
+     "angina pectoris",
+     "heart failure (NYHA II-III, stable, ischaemic/hypertensive/cardiomyopathic origin)"
+    ],
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, TOPROL-XL (metoprolol succinate) ER tablets, Melinta, setid 496ddfaa-7c9c-4888-b747-a210249b367a",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/496ddfaa-7c9c-4888-b747-a210249b367a.xml",
+     "quote": "TOPROL-XL is indicated for the treatment of hypertension ... to reduce cardiovascular mortality and hospitalization in patients with heart failure",
+     "retrieved": "2026-08-17",
+     "note": "HEART FAILURE IS AN INDICATION FOR THIS PRODUCT AND NOT FOR THE IMMEDIATE-RELEASE TARTRATE. This is a SALT- AND FORMULATION-SPECIFIC indication, not a metoprolol-moiety indication: the mortality evidence (MERIT-HF) was generated with metoprolol succinate ER, and the FDA approved the indication for that product only. Any engine that models metoprolol as one drug with a formulation attribute WILL recommend an unindicated product for heart failure."
+    }
+   },
+   "salt_form_is_first_class": true,
+   "salt_distinction_note": "SALT FORM IS A FIRST-CLASS DISTINCTION IN THIS FILE, NOT A FORMULATION ATTRIBUTE. prod_metoprolol_succinate_er_tablet and prod_metoprolol_tartrate_tablet are SEPARATE product records with different salts, different release profiles, different excipient sets (only titanium dioxide is shared), different dosing intervals (24 h vs 12 h) and DIFFERENT APPROVED INDICATIONS. They share one substance record (`metoprolol`, the moiety) because the pharmacodynamics are label-stated to be formulation-independent \u2014 but they must never be collapsed into one product.",
+   "notes": "THE ONLY METOPROLOL PRODUCT WITH A HEART FAILURE INDICATION. If the twin has heart failure, this product is correct and prod_metoprolol_tartrate_tablet is not \u2014 a genuine, sourced, formulation-level recommendation."
+  },
+  {
+   "id": "prod_metoprolol_tartrate_tablet",
+   "name": "Metoprolol tartrate immediate-release tablet",
+   "product_class": "monotherapy_alternate_formulation",
+   "dosage_form": "film-coated immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Lopressor (Validus Pharmaceuticals)"
+   ],
+   "generic_name": "metoprolol tartrate",
+   "available_strengths": {
+    "value": [
+     12.5,
+     25,
+     37.5,
+     50,
+     75,
+     100
+    ],
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+     "quote": "Lopressor is available as 50 mg and 100 mg tablets ... LOPRESSOR is available as 12.5 mg tablets",
+     "retrieved": "2026-08-17",
+     "note": "Brand Lopressor is 12.5/50/100 mg; 25, 37.5 and 75 mg exist as US ANDA generics. Strengths are stated as metoprolol TARTRATE."
+    }
+   },
+   "modeled_strength_mg": {
+    "value": 50.0,
+    "unit": "mg",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+     "quote": "50 mg tablets",
+     "retrieved": "2026-08-17",
+     "note": "Metoprolol base content = 50 x 0.781 = 39.1 mg, essentially identical to the 38.9 mg base in the '50 mg' ER product. The two products are base-matched, which is why the label can compare them directly."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "metoprolol",
+     "role": "active",
+     "amount_mg": 39.1,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+      "quote": "12.5 mg metoprolol tartrate (equivalent to 9.76 mg of metoprolol)",
+      "retrieved": "2026-08-17",
+      "note": "amount_mg is METOPROLOL BASE. B2 applied the label's own 12.5 -> 9.76 mg conversion factor (0.781) to the 50 mg strength: 50 x 0.781 = 39.05 mg base."
+     },
+     "salt_form": "metoprolol tartrate",
+     "salt_amount_mg": 50.0,
+     "label_strength_mg": 50.0
+    },
+    {
+     "substance_id": "microcrystalline_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "colloidal_silicon_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "lactose_monohydrate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "povidone",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Wet-granulation binder; absent from the 12.5 mg strength."
+     }
+    },
+    {
+     "substance_id": "sodium_starch_glycolate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Superdisintegrant."
+     }
+    },
+    {
+     "substance_id": "hypromellose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat (Opadry)."
+     }
+    },
+    {
+     "substance_id": "titanium_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat."
+     }
+    },
+    {
+     "substance_id": "talc",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat."
+     }
+    },
+    {
+     "substance_id": "polyethylene_glycol",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film-coat plasticiser."
+     }
+    },
+    {
+     "substance_id": "propylene_glycol",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film-coat plasticiser."
+     }
+    },
+    {
+     "substance_id": "dc_red_30",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Strength-specific colorant: Opadry Pink for 50 mg / D&C Red 30 in the 12.5 mg film coat."
+     }
+    },
+    {
+     "substance_id": "fdc_blue_2",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Strength-specific: Opadry Blue for the 100 mg tablet."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+    "quote": "Inactive Ingredients: Tablets contain microcrystalline cellulose, colloidal silicon dioxide, lactose monohydrate, magnesium stearate, povidone, sodium starch glycolate. Film coating contains Opadry YS-1-1419 Pink (50 mg tablets) or Opadry YS-1-4281 Blue (100 mg tablets).",
+    "retrieved": "2026-08-17",
+    "note": "'Opadry' is a PROPRIETARY COATING BLEND, not a single substance \u2014 the prose label hides its composition behind a trade name. The structured SPL IACT elements unpack it into hypromellose, polyethylene glycol, propylene glycol, talc, titanium dioxide, D&C Red 30 and FD&C Blue 2. THIS IS THE STRONGEST SINGLE JUSTIFICATION FOR AGENT A'S ADVICE TO USE DAILYMED XML RATHER THAN LABEL PROSE \u2014 prose gives 7 excipients, structured XML gives 12."
+   },
+   "patient_flags_from_excipients": [
+    "lactose_intolerance",
+    "galactosaemia",
+    "not_vegan",
+    "dye_sensitivity",
+    "sodium_content",
+    "eu_e171_regulatory_divergence"
+   ],
+   "lactose_free": false,
+   "lactose_free_note": "CONTAINS LACTOSE.",
+   "dosing_interval_h": 12,
+   "typical_daily_dose_mg": 100.0,
+   "formulation_pk": {
+    "value": 1.0,
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA label, metoprolol tartrate tablets, section 12.3",
+     "url": "https://api.fda.gov/drug/label.json?search=openfda.generic_name:%22metoprolol+tartrate%22+AND+_exists_:clinical_pharmacology&limit=3",
+     "quote": "The estimated oral bioavailability of immediate release metoprolol is about 50%",
+     "retrieved": "2026-08-17",
+     "note": "Reference formulation. Absolute F ~0.50; the ER product delivers 77% of this. Requires TWICE-daily dosing in hypertension because t1/2 is 3-4 h."
+    }
+   },
+   "approved_indications": {
+    "value": [
+     "hypertension",
+     "angina pectoris",
+     "haemodynamically stable acute myocardial infarction"
+    ],
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+     "quote": "Lopressor is indicated for the treatment of hypertension ... in the long-term treatment of angina pectoris ... in the treatment of hemodynamically stable patients with definite or suspected acute myocardial infarction",
+     "retrieved": "2026-08-17",
+     "note": "NO HEART FAILURE INDICATION. Agent C is right that this is a live clinical-error risk: prescribing immediate-release metoprolol tartrate for heart failure is a real-world error, and a simulator that reproduced it would be actively misleading. The tartrate product carries an ACUTE MI indication that the ER succinate product does not, so the difference runs in BOTH directions \u2014 it is not simply that ER is the better product."
+    }
+   },
+   "salt_form_is_first_class": true,
+   "salt_distinction_note": "See prod_metoprolol_succinate_er_tablet.salt_distinction_note. Separate record by design, per Agent C's finding.",
+   "contraindicated_use": {
+    "value": null,
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, LOPRESSOR (metoprolol tartrate) tablets, Validus, setid 0283bc9d-6998-493a-824a-d4c85f704111",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0283bc9d-6998-493a-824a-d4c85f704111.xml",
+     "quote": "in the treatment of hemodynamically stable patients with definite or suspected acute myocardial infarction",
+     "retrieved": "2026-08-17",
+     "note": "SAFETY RULE FOR AGENT C: if the twin has heart failure and the composed pill contains metoprolol TARTRATE, the engine must flag 'this salt/formulation is not indicated for heart failure; metoprolol succinate extended-release is' \u2014 a POSITIVE redirect, not a bare rejection."
+    }
+   },
+   "notes": "Included as a SEPARATE PRODUCT rather than a variant, because the whole point of Agent F's 'best formulation type' claim is that the simulator can put two real products side by side and pick one on evidence. Same moiety, base-matched dose, and a 2.7-fold difference in peak concentration."
+  },
+  {
+   "id": "prod_lisinopril_hctz_fdc",
+   "name": "Lisinopril and hydrochlorothiazide fixed-dose combination tablet",
+   "product_class": "fixed_dose_combination",
+   "dosage_form": "immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Zestoretic (Almatica Pharma)",
+    "Prinzide (Merck, discontinued)"
+   ],
+   "generic_name": "lisinopril and hydrochlorothiazide",
+   "available_strengths": {
+    "value": [
+     "10/12.5",
+     "20/12.5",
+     "20/25"
+    ],
+    "unit": "mg lisinopril / mg HCTZ",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+     "quote": "ZESTORETIC 10-12.5 containing 10 mg lisinopril, USP and 12.5 mg hydrochlorothiazide, USP; ZESTORETIC 20-12.5 containing 20 mg lisinopril, USP and 12.5 mg hydrochlorothiazide, USP; and, ZESTORETIC 20-25 containing 20 mg lisinopril, USP and 25 mg hydrochlorothiazide, USP.",
+     "retrieved": "2026-08-17",
+     "note": null
+    }
+   },
+   "modeled_strength_mg": {
+    "value": null,
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+     "quote": "ZESTORETIC 20-12.5",
+     "retrieved": "2026-08-17",
+     "note": "B2 models the 20/12.5 strength: the label states that 20/12.5 and 20/25 give SIMILAR mean antihypertensive effect, so 20/12.5 is the better benefit/harm point \u2014 a conclusion the report engine should be able to reproduce."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "lisinopril",
+     "role": "active",
+     "amount_mg": 20.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "ZESTORETIC 20-12.5 containing 20 mg lisinopril, USP and 12.5 mg hydrochlorothiazide, USP",
+      "retrieved": "2026-08-17"
+     }
+    },
+    {
+     "substance_id": "hydrochlorothiazide",
+     "role": "active",
+     "amount_mg": 12.5,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "12.5 mg hydrochlorothiazide, USP",
+      "retrieved": "2026-08-17"
+     }
+    },
+    {
+     "substance_id": "dibasic_calcium_phosphate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "mannitol",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "corn_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "ferric_oxide_red",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Present in 10-12.5 and 20-25, ABSENT from 20-12.5."
+     }
+    },
+    {
+     "substance_id": "ferric_oxide_yellow",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Present in 10-12.5 and 20-25, ABSENT from 20-12.5."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+    "quote": "Inactive Ingredients: 10-12.5 Tablets - calcium phosphate, magnesium stearate, mannitol, red ferric oxide, corn starch, yellow ferric oxide. 20-12.5 Tablets - calcium phosphate, magnesium stearate, mannitol, corn starch. 20-25 Tablets - calcium phosphate, magnesium stearate, mannitol, red ferric oxide, corn starch, yellow ferric oxide.",
+    "retrieved": "2026-08-17",
+    "note": "The 20-12.5 strength is UNCOLOURED; the other two carry iron oxides. Note also that the excipient set is IDENTICAL to Zestril's \u2014 the manufacturer simply added HCTZ to the same platform. LACTOSE-FREE, unlike the generic HCTZ monotherapy tablet, so the FDC can be the SAFER choice for a galactosaemic patient who needs both drugs. That is a non-obvious, sourced, product-level conclusion."
+   },
+   "patient_flags_from_excipients": [],
+   "lactose_free": true,
+   "lactose_free_note": "LACTOSE-FREE and, at 20-12.5, DYE-FREE. The cleanest excipient profile of any multi-active product here.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": null,
+   "combination_pharmacology": {
+    "bioequivalence": {
+     "value": 1.0,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "Concomitant administration of lisinopril and hydrochlorothiazide has little or no effect on the bioavailability of either drug. The combination tablet is bioequivalent to concomitant administration of the separate entities.",
+      "retrieved": "2026-08-17",
+      "note": "TIER 1 LICENCE TO SUPERPOSE PK. The simulator may model an FDC as the sum of its parts' PK without apology, and can cite the label for it."
+     }
+    },
+    "bp_interaction": {
+     "value": 1.0,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "In clinical studies, the extent of blood pressure reduction seen with the combination of lisinopril and hydrochlorothiazide was approximately additive.",
+      "retrieved": "2026-08-17",
+      "note": "TIER 1 AND CRITICAL FOR AGENT E. ADDITIVE, not synergistic and not sub-additive, for ACE inhibitor + thiazide. Multiplier 1.0 on the sum of individual effects. CONTRAST: beta-blocker + thiazide is generally LESS than additive because metoprolol suppresses renin while HCTZ raises it. Agent E should encode a class-pair interaction matrix, not a single global rule."
+     }
+    },
+    "dose_ceiling": {
+     "value": null,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "In a randomized, controlled comparison, the mean antihypertensive effects of lisinopril and hydrochlorothiazide tablets 20 mg/12.5 mg and lisinopril and hydrochlorothiazide tablets 20 mg/25 mg were similar, suggesting that many patients who respond adequately to the latter combination may be controlled with lisinopril and hydrochlorothiazide tablets 20 mg/12.5 mg.",
+      "retrieved": "2026-08-17",
+      "note": "A LABEL-STATED 'BEST DOSE' CONCLUSION the report engine should reproduce: doubling the HCTZ from 12.5 to 25 mg adds no measurable BP but does add hypokalaemia and hyperuricaemia. If the engine picks 20/12.5 over 20/25, it has independently rediscovered what the FDA label says."
+     }
+    },
+    "potassium_neutralisation": {
+     "value": 0.0,
+     "unit": "mmol/L",
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "patients treated with lisinopril plus a thiazide diuretic showed essentially no change in serum potassium",
+      "retrieved": "2026-08-17",
+      "note": "THE SET-PIECE DEMO. Run HCTZ alone: potassium falls ~0.4 mmol/L. Run lisinopril alone: potassium rises slightly. Run the FDC: NET ZERO, and the label says so. A viewer sees two red bars cancel."
+     }
+    },
+    "race_effect": {
+     "value": null,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, ZESTORETIC (lisinopril and hydrochlorothiazide) tablets, Almatica, setid 0d3a966f-f937-05a8-a90f-5aa52ebbd613",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/0d3a966f-f937-05a8-a90f-5aa52ebbd613.xml",
+      "quote": "The lisinopril and hydrochlorothiazide tablets 10 mg/12.5 mg combination worked equally well in Black and Caucasian patients. The lisinopril and hydrochlorothiazide tablets 20 mg/12.5 mg and lisinopril and hydrochlorothiazide tablets 20 mg/25 mg combinations appeared somewhat less effective in Black patients, but relatively few Black patients were studied.",
+      "retrieved": "2026-08-17",
+      "note": "Label explicitly flags its own small sample. If the product models an ethnicity axis it should carry this uncertainty forward rather than hard-coding a coefficient."
+     }
+    }
+   },
+   "notes": "THE PROOF THAT 'A PILL IS A COMPOSITION OF SUBSTANCES' IS GROUNDED IN REALITY. Two actives whose adverse-effect profiles cancel, in a real approved product, with the cancellation stated on the label."
+  },
+  {
+   "id": "prod_losartan_hctz_fdc",
+   "name": "Losartan potassium and hydrochlorothiazide fixed-dose combination tablet",
+   "product_class": "fixed_dose_combination",
+   "dosage_form": "film-coated immediate-release tablet",
+   "route": "oral",
+   "reference_brand_names": [
+    "Hyzaar (Organon)"
+   ],
+   "generic_name": "losartan potassium and hydrochlorothiazide",
+   "available_strengths": {
+    "value": [
+     "50/12.5",
+     "100/12.5",
+     "100/25"
+    ],
+    "unit": "mg losartan / mg HCTZ",
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+     "quote": "HYZAAR 50/12.5 contains 50 mg of losartan potassium and 12.5 mg of hydrochlorothiazide. HYZAAR 100/12.5 contains 100 mg of losartan potassium and 12.5 mg of hydrochlorothiazide. HYZAAR 100/25 contains 100 mg of losartan potassium and 25 mg of hydrochlorothiazide.",
+     "retrieved": "2026-08-17",
+     "note": null
+    }
+   },
+   "modeled_strength_mg": {
+    "value": null,
+    "unit": null,
+    "range": null,
+    "cv_percent": null,
+    "n": null,
+    "distribution": null,
+    "provenance": {
+     "status": "CITED",
+     "tier": 1,
+     "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+     "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+     "quote": "HYZAAR 50/12.5",
+     "retrieved": "2026-08-17",
+     "note": "B2 models 50/12.5: the entry-level strength, matched to the modeled Cozaar 50 mg so the mono-vs-FDC comparison isolates the HCTZ contribution."
+    }
+   },
+   "composition": [
+    {
+     "substance_id": "losartan",
+     "role": "active",
+     "amount_mg": 50.0,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+      "quote": "HYZAAR 50/12.5 contains 50 mg of losartan potassium and 12.5 mg of hydrochlorothiazide",
+      "retrieved": "2026-08-17"
+     }
+    },
+    {
+     "substance_id": "hydrochlorothiazide",
+     "role": "active",
+     "amount_mg": 12.5,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+      "quote": "12.5 mg of hydrochlorothiazide",
+      "retrieved": "2026-08-17"
+     }
+    },
+    {
+     "substance_id": "potassium_content",
+     "role": "counter_ion",
+     "amount_mg": 4.24,
+     "amount_provenance": {
+      "status": "CITED",
+      "tier": 1,
+      "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+      "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+      "quote": "HYZAAR 50/12.5 contains 4.24 mg (0.108 mEq) of potassium",
+      "retrieved": "2026-08-17",
+      "note": "Neatly ironic: the potassium-sparing partner arrives with its own 0.108 mEq of potassium, which is still negligible against the ~0.4 mmol/L serum fall HCTZ would cause alone."
+     }
+    },
+    {
+     "substance_id": "microcrystalline_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "lactose_monohydrate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "pregelatinized_starch",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "magnesium_stearate",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "hydroxypropyl_cellulose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Not disclosed."
+     }
+    },
+    {
+     "substance_id": "hypromellose",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat."
+     }
+    },
+    {
+     "substance_id": "titanium_dioxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Film coat."
+     }
+    },
+    {
+     "substance_id": "dc_yellow_10",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "STRENGTH-SPECIFIC: in 50/12.5 and 100/25 only, ABSENT from 100/12.5."
+     }
+    },
+    {
+     "substance_id": "aluminum_oxide",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "Lake pigment substrate; appears as a discrete SPL ingredient."
+     }
+    },
+    {
+     "substance_id": "carnauba_wax",
+     "role": "excipient",
+     "amount_mg": null,
+     "amount_provenance": {
+      "status": "NOT_FOUND",
+      "note": "CONDITIONAL \u2014 'may also contain'."
+     }
+    }
+   ],
+   "excipient_provenance": {
+    "status": "CITED",
+    "tier": 1,
+    "source": "FDA/DailyMed SPL, HYZAAR (losartan potassium and hydrochlorothiazide) tablets, Organon, setid 4116ccde-2e23-45f4-b12f-6337df877744",
+    "url": "https://dailymed.nlm.nih.gov/dailymed/services/v2/spls/4116ccde-2e23-45f4-b12f-6337df877744.xml",
+    "quote": "Inactive ingredients are microcrystalline cellulose, lactose hydrous, pregelatinized starch, magnesium stearate, hydroxypropyl cellulose, hypromellose, and titanium dioxide. HYZAAR 50/12.5 and HYZAAR 100/25 also contain D&C yellow No. 10 aluminum lake. HYZAAR 50/12.5, HYZAAR 100/12.5, and HYZAAR 100/25 may also contain carnauba wax.",
+    "retrieved": "2026-08-17",
+    "note": "THREE STRENGTHS OF ONE BRAND, THREE DIFFERENT EXCIPIENT SETS. 100/12.5 has no dye; 50/12.5 and 100/25 do. If a dye-sensitive patient needs this combination, the SIMULATOR CAN NAME THE SPECIFIC STRENGTH THAT IS SAFE. That is a level of specificity a molecule-level tool structurally cannot reach, and it is the clearest possible demonstration of why the Pills page exists."
+   },
+   "patient_flags_from_excipients": [
+    "lactose_intolerance",
+    "galactosaemia",
+    "not_vegan",
+    "dye_sensitivity",
+    "aluminium_content",
+    "eu_e171_regulatory_divergence"
+   ],
+   "lactose_free": false,
+   "lactose_free_note": "CONTAINS LACTOSE.",
+   "dosing_interval_h": 24,
+   "typical_daily_dose_mg": null,
+   "combination_pharmacology": {
+    "bioequivalence": {
+     "value": 1.0,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "ESTIMATED",
+      "tier": null,
+      "source": null,
+      "url": null,
+      "quote": null,
+      "retrieved": null,
+      "note": "ESTIMATED. The Hyzaar label does not carry an explicit bioequivalence sentence in the text B2 retrieved, unlike Zestoretic. Superposition is nonetheless the standard regulatory assumption for an approved FDC and B2 recommends it \u2014 but the CITED bioequivalence statement is Zestoretic's, not Hyzaar's. Do not misattribute it."
+     }
+    },
+    "urate_self_correction": {
+     "value": null,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "ESTIMATED",
+      "tier": null,
+      "source": null,
+      "url": null,
+      "quote": null,
+      "retrieved": null,
+      "note": "ESTIMATED SYNTHESIS, and the most interesting pharmacology in the product set. Hydrochlorothiazide RAISES serum urate (Tier 2: +48 umol/L at 25 mg, and only 12.3 mg is needed for +36 umol/L). Losartan is uricosuric and LOWERS it \u2014 a class-unique property of losartan among ARBs, mediated by URAT1 inhibition. The combination is therefore PARTLY SELF-CORRECTING FOR URATE, which is precisely why losartan/HCTZ is the preferred thiazide combination in a patient with gout or hyperuricaemia, and why lisinopril/HCTZ is not equivalent. B2 could not source a quantitative net-urate figure for the fixed combination within the timebox \u2014 the DIRECTION is well established, the MAGNITUDE is NOT SOURCED. Flag it in the UI as directional. AGENT C: this should be a positive/compelling-indication rule, not just the absence of a contraindication."
+     }
+    },
+    "potassium_neutralisation": {
+     "value": 0.0,
+     "unit": "mmol/L",
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "ESTIMATED",
+      "tier": null,
+      "source": null,
+      "url": null,
+      "quote": null,
+      "retrieved": null,
+      "note": "ESTIMATED by analogy to the Tier-1 lisinopril/HCTZ statement. ARBs and ACE inhibitors both reduce aldosterone, so the mechanism is the same, but B2 found no equivalent explicit sentence in the Hyzaar label. Directionally safe, magnitude not label-confirmed for this product."
+     }
+    },
+    "bp_interaction": {
+     "value": 1.0,
+     "unit": null,
+     "range": null,
+     "cv_percent": null,
+     "n": null,
+     "distribution": null,
+     "provenance": {
+      "status": "ESTIMATED",
+      "tier": null,
+      "source": null,
+      "url": null,
+      "quote": null,
+      "retrieved": null,
+      "note": "ESTIMATED additive, by analogy to the Tier-1 lisinopril/HCTZ statement. ARB + thiazide is conventionally treated as additive."
+     }
+    }
+   },
+   "notes": "THE SECOND REAL FIXED-DOSE COMBINATION, and pharmacologically the more interesting of the two: it is the answer to the gout reject case. Where HCTZ alone must be refused in a gout patient, HCTZ combined with losartan is the standard workaround."
+  }
+ ]
+}
