@@ -9,6 +9,7 @@
 
 import type { PatientState, RunSummary, Regimen, ScoreWeights } from '../../types'
 import type { PilSimData } from '../../data/load'
+import type { Translate } from '../../i18n/dictionary'
 import {
   modellingCaveatChip,
   rankOptions,
@@ -67,11 +68,19 @@ export function defaultWeights(): ScoreWeights {
   return scorerDefaultWeights()
 }
 
+/**
+ * `t` is optional and injected, because the scorer is framework-agnostic and cannot call
+ * `useT()`. Pass it wherever the ranking is going ON SCREEN — the reason lines and the
+ * formulation refusals are sentences the product wrote, and they used to print in English
+ * under translated headings. Omit it where the ranking is going to the model instead of to
+ * a reader; English is then unchanged.
+ */
 export function rank(
   patient: PatientState,
   arms: ArmForScoring[],
   weights: ScoreWeights,
   data: PilSimData | null,
+  t?: Translate,
 ): { ranked: ScoredOption[] | null; error?: string } {
   if (!arms.length) return { ranked: [] }
   const candidates: ScoreCandidate[] = arms.map((a) => ({
@@ -84,7 +93,7 @@ export function rank(
     troughToPeakRatio: a.troughToPeakRatio,
   }))
   try {
-    return { ranked: rankOptions({ patient, candidates, data, weights }) }
+    return { ranked: rankOptions({ patient, candidates, data, weights, t }) }
   } catch (err) {
     return { ranked: null, error: err instanceof Error ? err.message : String(err) }
   }

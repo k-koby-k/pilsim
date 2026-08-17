@@ -20,6 +20,8 @@
  * RULES in the task brief this module was built against.
  */
 
+import { FORMULATION_REFUSAL_CHIP, FORMULATION_REFUSAL_TEXT } from '../report/disclaimer'
+
 export type Lang = 'en' | 'uz' | 'ru'
 
 type Vars = Record<string, string | number>
@@ -1579,9 +1581,9 @@ const en = {
     'Five-year view: a projection of blood pressure control and organ-relevant markers. It is not a prediction of strokes, infarctions or deaths, and must never be read as one.',
 
   // ------------------------------------------------------------ dose timing (src/report/timing.ts)
-  // Structural labels only. The generated reason sentences, statements and citations carry
-  // drug names, trial names and numbers, so — like the rest of this report — they are
-  // rendered verbatim in English regardless of language; see the file header.
+  // Structural labels. The generated sentences themselves live under `sim.timing.text.*`
+  // further down — `buildTiming` takes a `t` and resolves them — while the citations, trial
+  // names, drug names and numbers inside them stay verbatim in every language.
   'sim.timing.heading': 'When in the day to take it',
   'sim.timing.categoryOutcome': 'Outcome',
   'sim.timing.categoryTolerability': 'Tolerability',
@@ -1598,6 +1600,193 @@ const en = {
   'sim.timing.gapsHeading': 'Timing — what this does not answer',
   'sim.timing.headlineHeading': 'When to take it',
   'sim.timing.headlineDetailLink': 'Why — full timing evidence below ↓',
+
+  // ==========================================================================
+  // GENERATED PROSE — sentences the PRODUCT wrote, from src/report/**
+  // ==========================================================================
+  // These were string literals inside `src/report/timing.ts` and
+  // `src/report/score.ts`, which is why they rendered in English under every
+  // language. They are OURS, not a source's, so they translate. What stays
+  // English INSIDE them, in every language, is everything a reader would use to
+  // check us: trial names (TIME, BedMed, MAPEC, Hygia, ONTARGET), journal
+  // names, PMIDs, DOIs, verbatim quoted titles, every number, unit and
+  // statistic, and every drug or substance name. Those arrive as interpolated
+  // vars or are written into the translation unchanged.
+  //
+  // NORMATIVE, and it must survive translation exactly:
+  //  - the timing verdict is a NEGATIVE claim — night-time dosing has NOT been
+  //    shown to prevent events. Never "may help", never "is not recommended".
+  //  - "this product does not agree" keeps its force.
+  //  - a refusal stays a decision: "not determined", never "no data available".
+
+  // ------------------------------------------------- timing: the outcome verdict
+  'sim.timing.text.outcomeVerdict':
+    'Taking your blood-pressure tablets at night has NOT been shown to prevent heart attacks, strokes or ' +
+    'deaths. If you have heard otherwise, this product does not agree, and the paragraphs below say why.',
+  'sim.timing.text.outcomeTrials':
+    'Two large randomised trials looked for that benefit and did not find it. TIME randomised 21 104 UK adults ' +
+    'to morning or evening dosing and followed them a median of 5.2 years: a vascular death, heart attack or ' +
+    'stroke occurred in 362 (3.4 %) of the evening group and 390 (3.7 %) of the morning group, hazard ratio ' +
+    '0.95 (95 % CI 0.83–1.10), p=0.53. BedMed randomised 3357 Canadian primary-care adults to bedtime or ' +
+    'morning and followed them a median of 4.6 years: 2.3 against 2.4 events per 100 patient-years, adjusted ' +
+    'hazard ratio 0.96 (95 % CI 0.77–1.19), p=.70.',
+  'sim.timing.text.outcomeContested':
+    'The claim of a benefit comes from two studies by one research group — MAPEC (2010) and the Hygia ' +
+    'Chronotherapy Trial (2020), whose title is "Bedtime hypertension treatment improves cardiovascular risk ' +
+    'reduction". Neither has been retracted. Hygia carries TWO Expressions of Concern from the European Heart ' +
+    'Journal (2020;41(16):1600 and 2020;41(48):4564), and eight hypertension researchers published a challenge ' +
+    'to the project titled "Missing Verification of Source Data in Hypertension Research: The HYGIA PROJECT in ' +
+    'Perspective". PilSim deliberately does not reproduce Hygia\'s effect size: a precise, memorable number ' +
+    'from a contested paper is harder to un-read than it is to qualify.',
+  'sim.timing.text.outcomeSafetyMirror':
+    'The safety worry runs the other way too, and it was also answered: BedMed found no excess of falls or ' +
+    'fractures, no excess of new glaucoma diagnoses and no difference in cognitive decline at 18 months with ' +
+    'bedtime dosing. So the honest summary is not "night-time dosing is dangerous" either — it is that the ' +
+    'time of day did not change the outcome in either direction.',
+  'sim.timing.text.outcomeSurrogate':
+    'What is still genuinely open is night-time blood pressure as a number, not as an outcome: the OMAN trial ' +
+    '(2025) found bedtime dosing lowered night-time systolic pressure by about 3 mmHg more than morning ' +
+    'dosing. That is a surrogate. No trial has shown that closing that 3 mmHg changes what happens to a ' +
+    'patient, and PilSim cannot identify who has raised night-time pressure in the first place — it models no ' +
+    'circadian rhythm at all.',
+  'sim.timing.text.outcomeConsistentTime':
+    'So: take them at a time you will reliably keep. TIME\'s own advice, verbatim — "Patients can be advised ' +
+    'that they can take their regular antihypertensive medications at a convenient time that minimises any ' +
+    'undesirable effects." Note that "no best hour" is not "any hour on any day": both trials assigned a fixed ' +
+    'time and kept it, so the recommendation is one consistent time, not a moving one.',
+
+  // ------------------------------------------------------- timing: per drug
+  'sim.timing.text.drugOutcome': (v: Vars) =>
+    `No time of day is established to make ${v.name} better at preventing heart attacks, strokes or deaths. ` +
+    `Randomised trials of morning against evening dosing found no difference in those outcomes.`,
+  'sim.timing.text.thiazideMorning': (v: Vars) =>
+    `Take ${v.name} in the morning, so its diuresis happens while you are up: the label puts the ` +
+    `onset at about ${v.onset} hours after the dose${v.peakClause}` +
+    `, and the whole episode at ${v.duration}. An evening dose spends that window in the night and wakes ` +
+    `you to pass urine. This is about your sleep, not about your heart — it carries no claim of any effect on ` +
+    `heart attacks or strokes.`,
+  'sim.timing.text.thiazidePeakClause': (v: Vars) => `, the peak at about ${v.peak}`,
+  'sim.timing.text.durationRange': (v: Vars) => `about ${v.lo}–${v.hi} hours`,
+  'sim.timing.text.durationSingle': (v: Vars) => `about ${v.value} hours`,
+  'sim.timing.text.firstDoseHypotension': (v: Vars) =>
+    `Take the FIRST dose of ${v.name} at bedtime, then at whatever time suits you thereafter: the dataset records ` +
+    `hypotension for it with an onset of "${v.onset}", so if that first dose does drop ` +
+    `your pressure enough to make you light-headed, it is better that you are already lying down.` +
+    `${v.mechanismClause}` +
+    ` The hazard is labelled; taking the first dose at bedtime is an inference FROM it and not a labelled ` +
+    `instruction, which is why this is stated with moderate rather than high confidence.`,
+  'sim.timing.text.datasetOwnWords': (v: Vars) => ` The dataset's own words on it: ${v.mechanism}.`,
+
+  // --------------------------------------------- timing: pharmacokinetic room
+  'sim.timing.text.pkNegligible': (v: Vars) =>
+    `For ${v.name} the hour is close to irrelevant on pharmacokinetic grounds alone: with a ` +
+    `${v.halfLife} h half-life the concentration only swings ${v.swing} across the ` +
+    `${v.intervalH} h between doses and is still at ${v.troughPct}% of its peak when the next dose is due, ` +
+    `so no part of the day is meaningfully better covered than any other.${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkMarked': (v: Vars) =>
+    `${v.name} swings ${v.swing} across the ${v.intervalH} h between doses and is down to ${v.troughPct}% of its ` +
+    `peak by the time the next one is due, so on this schedule part of every day is barely covered whichever ` +
+    `hour you choose. Moving the dose moves the gap, it does not close it — closing it means a divided dose or ` +
+    `the extended-release form, which is a prescribing decision, not a timing one.${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkModerate': (v: Vars) =>
+    `${v.name} falls to ${v.troughPct}% of its peak — a ${v.swing} swing — across the ${v.intervalH} h between ` +
+    `doses, so there is room for the hour to matter in principle. It does not follow that one hour controls ` +
+    `blood pressure better than another: the engine models no circadian rhythm, and the trials that looked ` +
+    `found no difference.${v.tolerabilityClause}${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkSwingFold': (v: Vars) => `${v.value}-fold`,
+  'sim.timing.text.pkSwingUnbounded': 'unbounded',
+  'sim.timing.text.pkViaMetabolite': (v: Vars) =>
+    ` ${v.name} itself is short-lived; what acts across the interval is its metabolite ${v.species}, ` +
+    `whose ${v.halfLife} h half-life is the one that matters here.`,
+  'sim.timing.text.pkPerDayNote': (v: Vars) =>
+    ` This is a ${v.perDay}-times-daily schedule, so the question is spacing rather than which hour of the day.`,
+  'sim.timing.text.pkHourFromTolerability':
+    ' The hour recommended above is recommended on tolerability grounds, not on this one.',
+  'sim.timing.text.metoprololContrast': (v: Vars) =>
+    `Concretely: the same ${v.mgPerDay} mg/day of metoprolol swings ${v.ir}-fold as a ` +
+    `once-daily immediate-release tablet, ${v.er}-fold as the extended-release succinate, and ` +
+    `${v.bid}-fold split into two doses. If the flat profile is what you want, that is the ` +
+    `lever — not the clock.`,
+
+  // ------------------------------------------------ timing: the plan sentences
+  'sim.timing.text.anyTimeStatement': (v: Vars) =>
+    `${v.name}: take it ${v.label}. That is the answer, not a missing one — the ` +
+    `evidence does not establish a best time for this drug, and nothing about it makes one hour easier to ` +
+    `tolerate than another.`,
+  'sim.timing.text.takeAtStatement': (v: Vars) => `${v.name}: take it ${v.label}.`,
+  'sim.timing.text.threeKinds':
+    'Timing advice in this plan comes in three kinds and they are not interchangeable: what the evidence says ' +
+    'about OUTCOMES (heart attacks and strokes), what makes a drug easier to TOLERATE, and what the ' +
+    'PHARMACOKINETICS allow. Only the second one ever moves a recommended hour.',
+  'sim.timing.text.noGuidelineTiming':
+    'Nothing in PilSim\'s own guideline layer recommends a dose time: data/rules.json emits no timing effect ' +
+    'for any of the five substances. Every outcome statement here is read from the published trials directly ' +
+    'and is marked as literature, not as a guideline recommendation.',
+
+  // ------------------------------------------------------- timing: the gaps
+  'sim.timing.text.gapNonDipperWhat': 'whether this patient in particular would do better on a bedtime dose',
+  'sim.timing.text.gapNonDipperWhy':
+    'The one place the timing question is still live is raised night-time blood pressure and the non-dipper ' +
+    'pattern, and PilSim cannot identify either: data/patient_model.json lists "Circadian rhythm in blood ' +
+    'pressure — no dipper/non-dipper pattern" under `validity_limits.not_modelled`. The product carries no ' +
+    'ambulatory blood-pressure input and would have nothing to read even if it did.',
+  'sim.timing.text.gapMorningEveningWhat': 'a simulated comparison of a morning against an evening dose',
+  'sim.timing.text.gapMorningEveningWhy':
+    'The engine has no circadian rhythm in blood pressure, so a morning and an evening dose produce the same ' +
+    'simulated result by construction. The coverage figures above describe the SHAPE of the concentration curve ' +
+    'across a dosing interval; they say nothing about what the blood pressure is doing at 3 a.m., and this ' +
+    'product will not run a comparison whose answer is a property of its own simplifications.',
+
+  // ------------------------------------------ score: the reason lines and refusals
+  // Lab and risk CHANNEL names stay as the dataset words them ("Serum k",
+  // "Peripheral edema") — they are identifiers a reader matches back to the
+  // data, like a drug name. Only the sentence around them translates.
+  'sim.score.text.goalSingle': (v: Vars) =>
+    `Single simulated subject reaches ${v.target} with probability ${v.pct}% (assumed response spread; N = 1)`,
+  'sim.score.text.goalPopulation': (v: Vars) => `${v.pct}% of simulated patients reached ${v.target}`,
+  'sim.score.text.sbpFall': (v: Vars) => `Systolic pressure falls ${v.mmHg} mmHg at steady state`,
+  'sim.score.text.riskLine': (v: Vars) => `${v.name} risk ${v.pct}%`,
+  'sim.score.text.labOutside': (v: Vars) =>
+    `${v.name} left its reference range (${v.value} vs ${v.lo}–${v.hi})`,
+  'sim.score.text.labChance': (v: Vars) =>
+    `${v.pct}% chance ${v.name} leaves its reference range (${v.lo}–${v.hi})`,
+  'sim.score.text.tooCloseToCall':
+    'Too close to call: the arms within a point of each other are not separated by this model. ' +
+    'Every weight in the composite is an estimate, so treat them as equivalent and choose on the ' +
+    'components (efficacy, safety, appropriateness) shown beside the score.',
+  'sim.score.text.rankedBelowOverride':
+    'Ranked below every arm with no override requirement — a guideline says avoid, not forbid',
+  'sim.score.text.armNotRanked': (v: Vars) =>
+    `This arm is not ranked. ${v.title} fired at severity ` +
+    `${v.severity}. Printing a safety score next to an absolute ` +
+    `contraindication invites someone to read it as a tradeoff. It is not one.`,
+  'sim.score.text.anAbsoluteContraindication': 'An absolute contraindication',
+  'sim.score.text.absolutelyContraindicated': 'Absolutely contraindicated.',
+  'sim.score.text.caveatSexByDose':
+    'Modelling assumption: the sex difference is applied as a constant proportional effect across the dose range. The label reports sex and dose separately and states no sex-by-dose figure — this interaction is assumed, not labelled.',
+  'sim.score.text.caveatGeneric': (v: Vars) => `Modelling assumption: ${v.text}.`,
+
+  // --------------------------------------------------- formulation verdicts
+  // The English refusal wording is NORMATIVE (report spec §5.4) and has exactly
+  // one home — src/report/disclaimer.ts. It is imported, never retyped, so the
+  // English here cannot drift from the constant the scorer and the tests use.
+  'sim.formulation.text.refusal': FORMULATION_REFUSAL_TEXT,
+  'sim.formulation.text.refusalChip': FORMULATION_REFUSAL_CHIP,
+  'sim.formulation.text.noProfile':
+    'Best formulation type: not determined. The run did not produce a concentration profile, so trough-to-peak ratio and fluctuation could not be measured.',
+  'sim.formulation.text.tprReason': (v: Vars) => `Trough-to-peak ratio ${v.value}${v.derived}`,
+  'sim.formulation.text.tprDerivedClause': ' (from the concentration profile)',
+  'sim.formulation.text.onceDaily': 'Once daily',
+  'sim.formulation.text.timesDaily': (v: Vars) => `${v.n}× daily dosing`,
+  'sim.formulation.text.forgivenessProxy':
+    'Forgiveness after a missed dose was not measured; trough-to-peak used as a proxy.',
+  'sim.formulation.text.metoprololRanked':
+    'Extended-release preferred. Succinate ER peak plasma levels average one-fourth to one-half ' +
+    'those of a corresponding dose of conventional metoprolol, which lowers peak β-blockade and ' +
+    'reduces β2 spillover at peak — the mechanism that matters for the airway archetype.',
+  'sim.formulation.text.amlodipineNotIndicated':
+    'Extended-release formulation not indicated — the drug’s 30–50 h half-life already produces ' +
+    'a flat concentration profile, so an ER form would change trough-to-peak and fluctuation negligibly.',
 } satisfies Record<string, DictValue>
 
 export type DictKey = keyof typeof en
@@ -3145,6 +3334,195 @@ const uz: Partial<Record<DictKey, DictValue>> = {
   'sim.timing.gapsHeading': 'Vaqt tanlash — bu nimaga javob bermaydi',
   'sim.timing.headlineHeading': 'Qachon ichish kerak',
   'sim.timing.headlineDetailLink': 'Nega — toʻliq dalillar quyida ↓',
+
+  // ==========================================================================
+  // GENERATED PROSE — src/report/timing.ts, src/report/score.ts
+  // ==========================================================================
+  // Sinov nomlari (TIME, BedMed, MAPEC, Hygia), jurnal nomlari, PMID/DOI,
+  // soʻzma-soʻz keltirilgan sarlavhalar, barcha raqamlar, birliklar,
+  // statistikalar va dori nomlari TARJIMA QILINMAYDI — ular oʻqigan kishi bizni
+  // manba boʻyicha tekshira olishi uchun ingliz tilida qoladi.
+  // ⚠️ Hukm INKOR: kechasi qabul qilish hodisalarning oldini olishi
+  //    ISBOTLANMAGAN. "Yordam berishi mumkin" yoki "tavsiya etilmaydi" emas.
+  //    Rad javobi qaror boʻlib qoladi: "aniqlanmadi", "maʼlumot yoʻq" emas.
+
+  'sim.timing.text.outcomeVerdict':
+    'Qon bosimi dorilarini kechasi qabul qilish yurak xuruji, insult yoki oʻlimning oldini olishi ' +
+    'ISBOTLANMAGAN. Agar siz boshqacha eshitgan boʻlsangiz, bu mahsulot bunga qoʻshilmaydi va quyidagi ' +
+    'paragraflar sababini aytadi.',
+  'sim.timing.text.outcomeTrials':
+    'Ikkita yirik randomizatsiyalangan sinov bu foydani qidirdi va topmadi. TIME Buyuk Britaniyadagi 21 104 ' +
+    'kattani ertalabki yoki kechki qabulga taqsimladi va ularni median 5.2 yil kuzatdi: qon-tomir sababli ' +
+    'oʻlim, yurak xuruji yoki insult kechki guruhdagi 362 (3.4 %) kishida va ertalabki guruhdagi 390 (3.7 %) ' +
+    'kishida yuz berdi, hazard ratio 0.95 (95 % CI 0.83–1.10), p=0.53. BedMed Kanadadagi birlamchi ' +
+    'boʻgʻindagi 3357 kattani yotishdan oldingi yoki ertalabki qabulga taqsimladi va median 4.6 yil kuzatdi: ' +
+    '100 bemor-yiliga 2.3 ga qarshi 2.4 hodisa, tuzatilgan hazard ratio 0.96 (95 % CI 0.77–1.19), p=.70.',
+  'sim.timing.text.outcomeContested':
+    'Foyda haqidagi daʼvo bitta tadqiqot guruhining ikkita ishidan keladi — MAPEC (2010) va Hygia ' +
+    'Chronotherapy Trial (2020), uning sarlavhasi "Bedtime hypertension treatment improves cardiovascular ' +
+    'risk reduction". Ularning hech biri chaqirib olinmagan. Hygia European Heart Journal tomonidan ' +
+    'chiqarilgan IKKITA Expression of Concern bilan yuradi (2020;41(16):1600 va 2020;41(48):4564), sakkiz ' +
+    'nafar gipertenziya tadqiqotchisi esa loyihaga qarshi "Missing Verification of Source Data in ' +
+    'Hypertension Research: The HYGIA PROJECT in Perspective" nomli eʼtirozni chop etdi. PilSim Hygia ' +
+    'effekt hajmini ataylab keltirmaydi: bahsli maqoladagi aniq va esda qoladigan raqamni unutish uni ' +
+    'izohlashdan koʻra qiyinroq.',
+  'sim.timing.text.outcomeSafetyMirror':
+    'Xavfsizlik xavotiri teskari tomonga ham tegishli va unga ham javob berilgan: BedMed yotishdan oldingi ' +
+    'qabulda yiqilish yoki suyak sinishi koʻpaymaganini, yangi glaukoma tashxislari koʻpaymaganini va 18 oyda ' +
+    'kognitiv pasayishda farq yoʻqligini aniqladi. Demak, halol xulosa "kechasi qabul qilish xavfli" ham ' +
+    'emas — kun vaqti natijani hech qaysi tomonga oʻzgartirmadi.',
+  'sim.timing.text.outcomeSurrogate':
+    'Haqiqatan ochiq qolgani — tungi qon bosimi raqam sifatida, natija sifatida emas: OMAN sinovi (2025) ' +
+    'yotishdan oldingi qabul tungi sistolik bosimni ertalabki qabulga qaraganda taxminan 3 mmHg koʻproq ' +
+    'pasaytirganini aniqladi. Bu — surrogat koʻrsatkich. Hech bir sinov oʻsha 3 mmHg ni yopish bemor bilan ' +
+    'nima boʻlishini oʻzgartirishini koʻrsatmagan, PilSim esa kimda tungi bosim koʻtarilganini umuman ' +
+    'aniqlay olmaydi — u sirkadiy ritmni butunlay modellashtirmaydi.',
+  'sim.timing.text.outcomeConsistentTime':
+    'Demak: ularni siz doimiy amal qila oladigan vaqtda qabul qiling. TIME ning oʻz maslahati, soʻzma-soʻz — ' +
+    '"Patients can be advised that they can take their regular antihypertensive medications at a convenient ' +
+    'time that minimises any undesirable effects." Eʼtibor bering: "eng yaxshi soat yoʻq" degani "istalgan ' +
+    'kuni istalgan soatda" degani emas: ikkala sinovda ham qatʼiy vaqt belgilangan va unga rioya qilingan, ' +
+    'shuning uchun tavsiya — bitta doimiy vaqt, oʻzgaruvchan emas.',
+
+  'sim.timing.text.drugOutcome': (v: Vars) =>
+    `${v.name} ni yurak xuruji, insult yoki oʻlimning oldini olishda samaraliroq qiladigan kun vaqti ` +
+    `aniqlanmagan. Ertalabki va kechki qabulni taqqoslagan randomizatsiyalangan sinovlar bu natijalarda farq ` +
+    `topmadi.`,
+  'sim.timing.text.thiazideMorning': (v: Vars) =>
+    `${v.name} ni ertalab qabul qiling, shunda uning diurezi siz uygʻoq paytingizda kechadi: yorliqqa koʻra ` +
+    `taʼsir dozadan taxminan ${v.onset} soat keyin boshlanadi${v.peakClause}, butun epizod esa ${v.duration} ` +
+    `davom etadi. Kechki doza bu oynani tunga tashlaydi va sizni siyish uchun uygʻotadi. Bu sizning uyqungiz ` +
+    `haqida, yuragingiz haqida emas — u yurak xuruji yoki insultga taʼsir qilishi haqida hech qanday daʼvo ` +
+    `qilmaydi.`,
+  'sim.timing.text.thiazidePeakClause': (v: Vars) => `, eng yuqori taʼsiri taxminan ${v.peak} soatda`,
+  'sim.timing.text.durationRange': (v: Vars) => `taxminan ${v.lo}–${v.hi} soat`,
+  'sim.timing.text.durationSingle': (v: Vars) => `taxminan ${v.value} soat`,
+  'sim.timing.text.firstDoseHypotension': (v: Vars) =>
+    `${v.name} ning BIRINCHI dozasini yotishdan oldin qabul qiling, keyin esa oʻzingizga qulay istalgan ` +
+    `vaqtda: maʼlumotlar toʻplami u uchun gipotenziyani "${v.onset}" boshlanishi bilan qayd etadi, shuning ` +
+    `uchun agar oʻsha birinchi doza bosimingizni boshingiz aylanadigan darajada tushirsa, allaqachon yotgan ` +
+    `boʻlganingiz maʼqul.${v.mechanismClause} Xavf yorliqda koʻrsatilgan; birinchi dozani yotishdan oldin ` +
+    `qabul qilish esa undan CHIQARILGAN xulosa, yorliqdagi koʻrsatma emas — shuning uchun bu yuqori emas, ` +
+    `oʻrtacha ishonch bilan aytiladi.`,
+  'sim.timing.text.datasetOwnWords': (v: Vars) =>
+    ` Maʼlumotlar toʻplamining oʻz soʻzlari bilan: ${v.mechanism}.`,
+
+  'sim.timing.text.pkNegligible': (v: Vars) =>
+    `${v.name} uchun soat faqat farmakokinetika nuqtai nazaridan deyarli ahamiyatsiz: ${v.halfLife} soatlik ` +
+    `yarim yemirilish davri bilan konsentratsiya dozalar orasidagi ${v.intervalH} soatda atigi ${v.swing} ` +
+    `tebranadi va navbatdagi doza vaqti kelganda ham oʻz choʻqqisining ${v.troughPct}% darajasida qoladi, ` +
+    `shuning uchun kunning hech bir qismi boshqasidan sezilarli darajada yaxshiroq qoplanmaydi.` +
+    `${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkMarked': (v: Vars) =>
+    `${v.name} dozalar orasidagi ${v.intervalH} soatda ${v.swing} tebranadi va navbatdagi doza vaqtiga kelib ` +
+    `oʻz choʻqqisining ${v.troughPct}% darajasiga tushadi, shuning uchun bu tartibda qaysi soatni ` +
+    `tanlashingizdan qatʼi nazar, har kunning bir qismi deyarli qoplanmay qoladi. Dozani surish boʻshliqni ` +
+    `koʻchiradi, uni yopmaydi — uni yopish dozani boʻlish yoki uzaytirilgan taʼsirli shaklni anglatadi, bu ` +
+    `esa vaqt tanlash emas, retsept qarori.${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkModerate': (v: Vars) =>
+    `${v.name} dozalar orasidagi ${v.intervalH} soatda oʻz choʻqqisining ${v.troughPct}% darajasiga tushadi — ` +
+    `${v.swing} tebranish — demak, tamoyil boʻyicha soatning ahamiyati boʻlishi mumkin. Bundan bir soat qon ` +
+    `bosimini boshqasidan yaxshiroq nazorat qiladi degan xulosa kelib chiqmaydi: model sirkadiy ritmni ` +
+    `hisobga olmaydi, buni tekshirgan sinovlar esa farq topmadi.` +
+    `${v.tolerabilityClause}${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkSwingFold': (v: Vars) => `${v.value} baravar`,
+  'sim.timing.text.pkSwingUnbounded': 'cheksiz',
+  'sim.timing.text.pkViaMetabolite': (v: Vars) =>
+    ` ${v.name} ning oʻzi qisqa umr koʻradi; interval davomida taʼsir qiladigani uning metaboliti ` +
+    `${v.species}, va bu yerda ahamiyatlisi uning ${v.halfLife} soatlik yarim yemirilish davri.`,
+  'sim.timing.text.pkPerDayNote': (v: Vars) =>
+    ` Bu kuniga ${v.perDay} marta qabul qilinadigan tartib, shuning uchun masala kunning qaysi soati emas, ` +
+    `dozalar orasidagi oraliq haqida.`,
+  'sim.timing.text.pkHourFromTolerability':
+    ' Yuqorida tavsiya etilgan soat farmakokinetika emas, chidamlilik asosida tavsiya etilgan.',
+  'sim.timing.text.metoprololContrast': (v: Vars) =>
+    `Aniq qilib aytganda: oʻsha ${v.mgPerDay} mg/day metoprolol kuniga bir marta qabul qilinadigan tez ` +
+    `taʼsirli tabletka sifatida ${v.ir} baravar, uzaytirilgan taʼsirli suksinat sifatida ${v.er} baravar va ` +
+    `ikkiga boʻlingan doza sifatida ${v.bid} baravar tebranadi. Agar sizga tekis profil kerak boʻlsa, richag ` +
+    `aynan shu — soat emas.`,
+
+  'sim.timing.text.anyTimeStatement': (v: Vars) =>
+    `${v.name}: uni ${v.label} qabul qiling. Bu — javob, yetishmayotgan narsa emas: dalillar bu dori uchun ` +
+    `eng yaxshi vaqtni belgilamaydi va unda bir soatni boshqasidan koʻra osonroq koʻtariladigan qiladigan ` +
+    `hech narsa yoʻq.`,
+  'sim.timing.text.takeAtStatement': (v: Vars) => `${v.name}: uni ${v.label} qabul qiling.`,
+  'sim.timing.text.threeKinds':
+    'Bu rejadagi vaqt boʻyicha maslahat uch xil boʻladi va ular bir-birining oʻrnini bosmaydi: dalillar ' +
+    'NATIJALAR (yurak xuruji va insult) haqida nima deyishi, dorini CHIDASH osonroq qiladigan narsa va ' +
+    'FARMAKOKINETIKA nimaga imkon berishi. Tavsiya etilgan soatni faqat ikkinchisi oʻzgartiradi.',
+  'sim.timing.text.noGuidelineTiming':
+    'PilSim ning oʻz klinik qoidalar qatlamida doza vaqtini tavsiya qiladigan hech narsa yoʻq: ' +
+    'data/rules.json beshta moddaning hech biri uchun vaqt taʼsirini chiqarmaydi. Bu yerdagi har bir natija ' +
+    'bayonoti bevosita chop etilgan sinovlardan oʻqilgan va klinik qoida tavsiyasi emas, adabiyot sifatida ' +
+    'belgilangan.',
+
+  'sim.timing.text.gapNonDipperWhat': 'aynan shu bemor yotishdan oldingi dozadan koʻproq foyda koʻrarmi',
+  'sim.timing.text.gapNonDipperWhy':
+    'Vaqt masalasi hali ochiq boʻlgan yagona joy — tungi qon bosimining koʻtarilishi va non-dipper turi, ' +
+    'PilSim esa ikkalasini ham aniqlay olmaydi: data/patient_model.json faylida "Circadian rhythm in blood ' +
+    'pressure — no dipper/non-dipper pattern" `validity_limits.not_modelled` ostida keltirilgan. Mahsulotda ' +
+    'sutkalik qon bosimi monitoringi kiritmasi yoʻq va boʻlganda ham oʻqiydigan narsasi boʻlmasdi.',
+  'sim.timing.text.gapMorningEveningWhat': 'ertalabki va kechki dozani simulyatsiyada taqqoslash',
+  'sim.timing.text.gapMorningEveningWhy':
+    'Modelda qon bosimining sirkadiy ritmi yoʻq, shuning uchun ertalabki va kechki doza tuzilishiga koʻra bir ' +
+    'xil simulyatsiya natijasini beradi. Yuqoridagi qoplash koʻrsatkichlari doza oraligʻidagi konsentratsiya ' +
+    'egri chizigʻining SHAKLINI tasvirlaydi; ular tunda soat 3 da qon bosimi nima qilayotgani haqida hech ' +
+    'narsa demaydi, va bu mahsulot javobi oʻz soddalashtirishlarining xossasi boʻlgan taqqoslashni ' +
+    'oʻtkazmaydi.',
+
+  'sim.score.text.goalSingle': (v: Vars) =>
+    `Bitta simulyatsiya qilingan bemor ${v.target} ga ${v.pct}% ehtimol bilan erishadi (javob tarqalishi ` +
+    `faraz qilingan; N = 1)`,
+  'sim.score.text.goalPopulation': (v: Vars) =>
+    `Simulyatsiya qilingan bemorlarning ${v.pct}% ${v.target} ga erishdi`,
+  'sim.score.text.sbpFall': (v: Vars) =>
+    `Barqaror holatda sistolik bosim ${v.mmHg} mmHg ga pasayadi`,
+  'sim.score.text.riskLine': (v: Vars) => `${v.name} xavfi ${v.pct}%`,
+  'sim.score.text.labOutside': (v: Vars) =>
+    `${v.name} oʻzining meʼyoriy oraligʻidan chiqdi (${v.value} — meʼyor ${v.lo}–${v.hi})`,
+  'sim.score.text.labChance': (v: Vars) =>
+    `${v.name} meʼyoriy oraliqdan chiqish ehtimoli ${v.pct}% (${v.lo}–${v.hi})`,
+  'sim.score.text.tooCloseToCall':
+    'Farqni aniqlab boʻlmaydi: bir balldan kam farq qiladigan variantlarni bu model ajratmaydi. Umumiy ' +
+    'balldagi har bir ogʻirlik — taxmin, shuning uchun ularni teng deb hisoblang va ball yonida koʻrsatilgan ' +
+    'komponentlar (samaradorlik, xavfsizlik, muvofiqlik) boʻyicha tanlang.',
+  'sim.score.text.rankedBelowOverride':
+    'Bekor qilish talabi yoʻq har bir variantdan pastda joylashtirilgan — klinik qoida "qoching" deydi, ' +
+    '"taqiqlanadi" demaydi',
+  'sim.score.text.armNotRanked': (v: Vars) =>
+    `Bu variant reytingga kiritilmaydi. ${v.title} ${v.severity} darajasida ishga tushdi. Mutlaq qarshi ` +
+    `koʻrsatma yonida xavfsizlik balini chop etish uni murosaga oʻxshab oʻqilishiga chorlaydi. Bu murosa emas.`,
+  'sim.score.text.anAbsoluteContraindication': 'Mutlaq qarshi koʻrsatma',
+  'sim.score.text.absolutelyContraindicated': 'Mutlaqo qarshi koʻrsatilgan.',
+  'sim.score.text.caveatSexByDose':
+    'Modellashtirish farazi: jins farqi butun doza oraligʻi boʻylab doimiy proporsional taʼsir sifatida ' +
+    'qoʻllaniladi. Yorliq jins va dozani alohida keltiradi va jins-doza oʻzaro taʼsiri boʻyicha raqam ' +
+    'bermaydi — bu oʻzaro taʼsir faraz qilingan, yorliqda koʻrsatilmagan.',
+  'sim.score.text.caveatGeneric': (v: Vars) => `Modellashtirish farazi: ${v.text}.`,
+
+  'sim.formulation.text.refusal':
+    'Eng yaxshi dori shakli: aniqlanmadi. Bu modda uchun faqat tez taʼsir qiluvchi (immediate-release) ogʻiz ' +
+    'orqali qattiq shakllar modellashtirilgan. Shakllarni taqqoslash uchun qabul yoʻliga xos ' +
+    'bioʻzlashuvchanlik va choʻqqiga chiqish vaqti maʼlumotlari kerak, ular esa bu versiyaning maʼlumotlar ' +
+    'toʻplamida yoʻq.',
+  'sim.formulation.text.refusalChip': 'Mavjud maʼlumotlar dori shakllarini taqqoslashga imkon bermaydi',
+  'sim.formulation.text.noProfile':
+    'Eng yaxshi dori shakli: aniqlanmadi. Simulyatsiya konsentratsiya profilini bermadi, shuning uchun ' +
+    'eng past/eng yuqori nisbati va tebranish oʻlchanmadi.',
+  'sim.formulation.text.tprReason': (v: Vars) => `Eng past/eng yuqori nisbati ${v.value}${v.derived}`,
+  'sim.formulation.text.tprDerivedClause': ' (konsentratsiya profilidan)',
+  'sim.formulation.text.onceDaily': 'Kuniga bir marta',
+  'sim.formulation.text.timesDaily': (v: Vars) => `Kuniga ${v.n} marta qabul`,
+  'sim.formulation.text.forgivenessProxy':
+    'Oʻtkazib yuborilgan dozadan keyingi zaxira oʻlchanmagan; oʻrniga eng past/eng yuqori nisbati ishlatilgan.',
+  'sim.formulation.text.metoprololRanked':
+    'Uzaytirilgan taʼsirli shakl afzal. Suksinat ER ning plazmadagi choʻqqi darajasi oddiy metoprololning ' +
+    'mos dozasinikidan oʻrtacha toʻrtdan bir — yarmigacha past, bu choʻqqidagi β-blokadani va choʻqqida β2 ga ' +
+    'oʻtishni kamaytiradi — nafas yoʻllari arxetipi uchun muhim boʻlgan mexanizm.',
+  'sim.formulation.text.amlodipineNotIndicated':
+    'Uzaytirilgan taʼsirli shakl keraksiz — dorining 30–50 soatlik yarim yemirilish davri allaqachon tekis ' +
+    'konsentratsiya profilini beradi, shuning uchun ER shakli eng past/eng yuqori nisbati va tebranishni ' +
+    'deyarli oʻzgartirmaydi.',
 }
 
 // ============================================================================
@@ -4728,6 +5106,189 @@ const ru: Partial<Record<DictKey, DictValue>> = {
   'sim.timing.gapsHeading': 'Время приёма — на что это не отвечает',
   'sim.timing.headlineHeading': 'Когда принимать',
   'sim.timing.headlineDetailLink': 'Почему — подробные доказательства ниже ↓',
+
+  // ==========================================================================
+  // GENERATED PROSE — src/report/timing.ts, src/report/score.ts
+  // ==========================================================================
+  // Названия исследований (TIME, BedMed, MAPEC, Hygia), названия журналов,
+  // PMID/DOI, дословно цитируемые заголовки, все числа, единицы, статистика и
+  // названия препаратов НЕ ПЕРЕВОДЯТСЯ — читатель должен иметь возможность
+  // сверить нас с источником.
+  // ⚠️ Вердикт ОТРИЦАТЕЛЬНЫЙ: приём на ночь НЕ доказал предотвращения событий.
+  //    Не «может помочь» и не «не рекомендуется». Отказ остаётся решением:
+  //    «не определена», а не «нет данных».
+
+  'sim.timing.text.outcomeVerdict':
+    'Приём таблеток от давления на ночь НЕ доказал способности предотвращать инфаркты, инсульты или ' +
+    'смерть. Если вы слышали обратное, этот продукт с этим не согласен, и абзацы ниже объясняют почему.',
+  'sim.timing.text.outcomeTrials':
+    'Два крупных рандомизированных исследования искали эту пользу и не нашли её. TIME распределило 21 104 ' +
+    'взрослых в Великобритании на утренний или вечерний приём и наблюдало их в среднем (медиана) 5.2 года: ' +
+    'сосудистая смерть, инфаркт или инсульт произошли у 362 (3.4 %) в вечерней группе и у 390 (3.7 %) в ' +
+    'утренней, hazard ratio 0.95 (95 % CI 0.83–1.10), p=0.53. BedMed распределило 3357 взрослых первичного ' +
+    'звена в Канаде на приём перед сном или утром и наблюдало их в среднем 4.6 года: 2.3 против 2.4 события ' +
+    'на 100 пациенто-лет, скорректированный hazard ratio 0.96 (95 % CI 0.77–1.19), p=.70.',
+  'sim.timing.text.outcomeContested':
+    'Утверждение о пользе исходит из двух работ одной исследовательской группы — MAPEC (2010) и Hygia ' +
+    'Chronotherapy Trial (2020), название которой — "Bedtime hypertension treatment improves cardiovascular ' +
+    'risk reduction". Ни одна из них не отозвана. В отношении Hygia European Heart Journal опубликовал ДВА ' +
+    'Expression of Concern (2020;41(16):1600 и 2020;41(48):4564), а восемь исследователей гипертензии ' +
+    'опубликовали возражение проекту под названием "Missing Verification of Source Data in Hypertension ' +
+    'Research: The HYGIA PROJECT in Perspective". PilSim намеренно не воспроизводит размер эффекта Hygia: ' +
+    'точное запоминающееся число из спорной статьи труднее забыть, чем оговорить.',
+  'sim.timing.text.outcomeSafetyMirror':
+    'Опасение по безопасности работает и в обратную сторону, и на него тоже получен ответ: BedMed не выявил ' +
+    'ни увеличения падений и переломов, ни увеличения новых диагнозов глаукомы, ни разницы в когнитивном ' +
+    'снижении через 18 месяцев при приёме перед сном. Значит, честный вывод — и не "приём на ночь опасен": ' +
+    'время суток не изменило исход ни в одну, ни в другую сторону.',
+  'sim.timing.text.outcomeSurrogate':
+    'По-настоящему открытым остаётся ночное давление как число, а не как исход: исследование OMAN (2025) ' +
+    'показало, что приём перед сном снижает ночное систолическое давление примерно на 3 mmHg больше, чем ' +
+    'утренний. Это суррогатный показатель. Ни одно исследование не показало, что устранение этих 3 mmHg ' +
+    'меняет то, что происходит с пациентом, а PilSim в принципе не может определить, у кого повышено ночное ' +
+    'давление, — он вообще не моделирует циркадный ритм.',
+  'sim.timing.text.outcomeConsistentTime':
+    'Итак: принимайте их в то время, которого вы сможете надёжно придерживаться. Собственный совет TIME, ' +
+    'дословно — "Patients can be advised that they can take their regular antihypertensive medications at a ' +
+    'convenient time that minimises any undesirable effects." Обратите внимание: "нет лучшего часа" — это не ' +
+    '"любой час в любой день": в обоих исследованиях время назначалось фиксированным и соблюдалось, поэтому ' +
+    'рекомендация — одно постоянное время, а не плавающее.',
+
+  'sim.timing.text.drugOutcome': (v: Vars) =>
+    `Не установлено времени суток, которое делало бы ${v.name} эффективнее в предотвращении инфарктов, ` +
+    `инсультов или смерти. Рандомизированные исследования утреннего приёма против вечернего не нашли ` +
+    `разницы в этих исходах.`,
+  'sim.timing.text.thiazideMorning': (v: Vars) =>
+    `Принимайте ${v.name} утром, чтобы диурез пришёлся на время, когда вы на ногах: инструкция указывает ` +
+    `начало действия примерно через ${v.onset} ч после приёма${v.peakClause}, а весь эпизод — ` +
+    `${v.duration}. Вечерняя доза переносит это окно на ночь и будит вас помочиться. Это про ваш сон, а не ` +
+    `про ваше сердце — здесь нет никакого утверждения о влиянии на инфаркты или инсульты.`,
+  'sim.timing.text.thiazidePeakClause': (v: Vars) => `, пик — примерно через ${v.peak} ч`,
+  'sim.timing.text.durationRange': (v: Vars) => `примерно ${v.lo}–${v.hi} ч`,
+  'sim.timing.text.durationSingle': (v: Vars) => `примерно ${v.value} ч`,
+  'sim.timing.text.firstDoseHypotension': (v: Vars) =>
+    `Принимайте ПЕРВУЮ дозу ${v.name} перед сном, а дальше — в любое удобное вам время: набор данных ` +
+    `фиксирует для него гипотензию с началом "${v.onset}", поэтому если первая доза действительно снизит ` +
+    `давление настолько, что закружится голова, лучше, чтобы вы уже лежали.${v.mechanismClause} Опасность ` +
+    `указана в инструкции; приём первой дозы перед сном — это вывод ИЗ неё, а не указание инструкции, ` +
+    `поэтому это сказано с умеренной, а не высокой достоверностью.`,
+  'sim.timing.text.datasetOwnWords': (v: Vars) => ` Формулировка самого набора данных: ${v.mechanism}.`,
+
+  'sim.timing.text.pkNegligible': (v: Vars) =>
+    `Для ${v.name} час приёма почти не имеет значения уже по одной фармакокинетике: при периоде ` +
+    `полувыведения ${v.halfLife} ч концентрация колеблется всего ${v.swing} за ${v.intervalH} ч между дозами ` +
+    `и к моменту следующей дозы остаётся на уровне ${v.troughPct}% от пика, так что ни одна часть суток не ` +
+    `покрыта заметно лучше другой.${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkMarked': (v: Vars) =>
+    `${v.name} колеблется ${v.swing} за ${v.intervalH} ч между дозами и к моменту следующей дозы падает до ` +
+    `${v.troughPct}% от пика, поэтому при такой схеме часть каждых суток покрыта плохо, какой бы час вы ни ` +
+    `выбрали. Перенос дозы смещает провал, но не закрывает его — закрыть его означает разделить дозу или ` +
+    `перейти на форму с замедленным высвобождением, а это решение о назначении, а не о времени приёма.` +
+    `${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkModerate': (v: Vars) =>
+    `${v.name} за ${v.intervalH} ч между дозами падает до ${v.troughPct}% от пика — колебание ${v.swing} — ` +
+    `так что в принципе час приёма мог бы иметь значение. Из этого не следует, что один час контролирует ` +
+    `давление лучше другого: модель не учитывает циркадный ритм, а исследования, которые это проверяли, ` +
+    `разницы не нашли.${v.tolerabilityClause}${v.via}${v.perDayNote}`,
+  'sim.timing.text.pkSwingFold': (v: Vars) => `в ${v.value} раза`,
+  'sim.timing.text.pkSwingUnbounded': 'неограниченно',
+  'sim.timing.text.pkViaMetabolite': (v: Vars) =>
+    ` Сам ${v.name} живёт недолго; на протяжении интервала действует его метаболит ${v.species}, и здесь ` +
+    `важен именно его период полувыведения ${v.halfLife} ч.`,
+  'sim.timing.text.pkPerDayNote': (v: Vars) =>
+    ` Это схема ${v.perDay} раза в сутки, поэтому вопрос в интервалах между дозами, а не в том, какой это ` +
+    `час суток.`,
+  'sim.timing.text.pkHourFromTolerability':
+    ' Час, рекомендованный выше, рекомендован по переносимости, а не по фармакокинетике.',
+  'sim.timing.text.metoprololContrast': (v: Vars) =>
+    `Конкретно: те же ${v.mgPerDay} mg/day метопролола колеблются в ${v.ir} раза как таблетка немедленного ` +
+    `высвобождения раз в сутки, в ${v.er} раза как сукцинат с замедленным высвобождением и в ${v.bid} раза ` +
+    `при делении на два приёма. Если вам нужен ровный профиль, рычаг именно здесь — а не в часах приёма.`,
+
+  'sim.timing.text.anyTimeStatement': (v: Vars) =>
+    `${v.name}: принимайте ${v.label}. Это и есть ответ, а не пропуск: доказательства не устанавливают ` +
+    `лучшего времени для этого препарата, и ничто в нём не делает один час переносимее другого.`,
+  'sim.timing.text.takeAtStatement': (v: Vars) => `${v.name}: принимайте ${v.label}.`,
+  'sim.timing.text.threeKinds':
+    'Рекомендации по времени в этом плане бывают трёх видов, и они не взаимозаменяемы: что доказательства ' +
+    'говорят об ИСХОДАХ (инфаркты и инсульты), что делает препарат легче ПЕРЕНОСИМЫМ и что позволяет ' +
+    'ФАРМАКОКИНЕТИКА. Рекомендуемый час сдвигает только второе.',
+  'sim.timing.text.noGuidelineTiming':
+    'Ничто в собственном слое клинических правил PilSim не рекомендует время приёма: data/rules.json не ' +
+    'выдаёт эффекта времени ни для одного из пяти веществ. Каждое утверждение об исходах здесь прочитано ' +
+    'напрямую из опубликованных исследований и помечено как литература, а не как рекомендация руководства.',
+
+  'sim.timing.text.gapNonDipperWhat': 'станет ли именно этому пациенту лучше от приёма перед сном',
+  'sim.timing.text.gapNonDipperWhy':
+    'Единственное место, где вопрос времени всё ещё открыт, — это повышенное ночное давление и профиль ' +
+    'non-dipper, и PilSim не может определить ни того, ни другого: в data/patient_model.json пункт ' +
+    '"Circadian rhythm in blood pressure — no dipper/non-dipper pattern" указан в ' +
+    '`validity_limits.not_modelled`. В продукте нет ввода данных суточного мониторирования давления, и даже ' +
+    'будь он, читать было бы нечего.',
+  'sim.timing.text.gapMorningEveningWhat': 'смоделированное сравнение утренней и вечерней дозы',
+  'sim.timing.text.gapMorningEveningWhy':
+    'В модели нет циркадного ритма артериального давления, поэтому утренняя и вечерняя доза по построению ' +
+    'дают одинаковый результат симуляции. Приведённые выше показатели покрытия описывают ФОРМУ кривой ' +
+    'концентрации на протяжении интервала между дозами; они ничего не говорят о том, что происходит с ' +
+    'давлением в 3 часа ночи, и этот продукт не станет проводить сравнение, ответ на которое — свойство его ' +
+    'собственных упрощений.',
+
+  'sim.score.text.goalSingle': (v: Vars) =>
+    `Один смоделированный пациент достигает ${v.target} с вероятностью ${v.pct}% (разброс ответа принят ` +
+    `допущением; N = 1)`,
+  'sim.score.text.goalPopulation': (v: Vars) =>
+    `${v.pct}% смоделированных пациентов достигли ${v.target}`,
+  'sim.score.text.sbpFall': (v: Vars) =>
+    `В равновесном состоянии систолическое давление снижается на ${v.mmHg} mmHg`,
+  'sim.score.text.riskLine': (v: Vars) => `Риск ${v.name} ${v.pct}%`,
+  'sim.score.text.labOutside': (v: Vars) =>
+    `${v.name} вышел за референсный диапазон (${v.value} против ${v.lo}–${v.hi})`,
+  'sim.score.text.labChance': (v: Vars) =>
+    `Вероятность ${v.pct}%, что ${v.name} выйдет за референсный диапазон (${v.lo}–${v.hi})`,
+  'sim.score.text.tooCloseToCall':
+    'Слишком близко, чтобы делать вывод: варианты в пределах одного балла эта модель не разделяет. Каждый ' +
+    'вес в составной оценке — допущение, поэтому считайте их равнозначными и выбирайте по компонентам ' +
+    '(эффективность, безопасность, уместность), показанным рядом с баллом.',
+  'sim.score.text.rankedBelowOverride':
+    'Помещён ниже каждого варианта без требования подтверждения — руководство говорит «избегать», а не ' +
+    '«запрещено»',
+  'sim.score.text.armNotRanked': (v: Vars) =>
+    `Этот вариант не ранжируется. ${v.title} сработало с уровнем ${v.severity}. Печатать оценку ` +
+    `безопасности рядом с абсолютным противопоказанием — приглашать прочитать её как компромисс. Это не ` +
+    `компромисс.`,
+  'sim.score.text.anAbsoluteContraindication': 'Абсолютное противопоказание',
+  'sim.score.text.absolutelyContraindicated': 'Абсолютно противопоказано.',
+  'sim.score.text.caveatSexByDose':
+    'Допущение модели: половое различие применяется как постоянный пропорциональный эффект во всём ' +
+    'диапазоне доз. Инструкция сообщает пол и дозу по отдельности и не приводит показателя «пол × доза» — ' +
+    'это взаимодействие принято допущением, а не указано в инструкции.',
+  'sim.score.text.caveatGeneric': (v: Vars) => `Допущение модели: ${v.text}.`,
+
+  'sim.formulation.text.refusal':
+    'Лучшая лекарственная форма: не определена. Для этого вещества моделировались только твёрдые ' +
+    'пероральные формы немедленного высвобождения. Сравнение форм требует данных о биодоступности и ' +
+    'времени достижения пика для конкретного пути введения, которых нет в наборе данных этой сборки.',
+  'sim.formulation.text.refusalChip': 'Имеющиеся данные не позволяют сравнить лекарственные формы',
+  'sim.formulation.text.noProfile':
+    'Лучшая лекарственная форма: не определена. Запуск не дал профиля концентрации, поэтому отношение ' +
+    '«остаточная/пиковая» и колебания измерить не удалось.',
+  'sim.formulation.text.tprReason': (v: Vars) =>
+    `Отношение «остаточная/пиковая» ${v.value}${v.derived}`,
+  'sim.formulation.text.tprDerivedClause': ' (из профиля концентрации)',
+  'sim.formulation.text.onceDaily': 'Один раз в сутки',
+  'sim.formulation.text.timesDaily': (v: Vars) => `Приём ${v.n}× в сутки`,
+  'sim.formulation.text.forgivenessProxy':
+    'Запас прочности при пропущенной дозе не измерялся; вместо него использовано отношение ' +
+    '«остаточная/пиковая».',
+  'sim.formulation.text.metoprololRanked':
+    'Предпочтительна форма с замедленным высвобождением. Пиковые концентрации сукцината ER в плазме в ' +
+    'среднем составляют от одной четверти до половины от соответствующей дозы обычного метопролола, что ' +
+    'снижает пиковую β-блокаду и уменьшает β2-переход на пике — механизм, важный для архетипа дыхательных ' +
+    'путей.',
+  'sim.formulation.text.amlodipineNotIndicated':
+    'Форма с замедленным высвобождением не показана — период полувыведения препарата 30–50 ч уже даёт ' +
+    'ровный профиль концентрации, поэтому ER-форма изменила бы отношение «остаточная/пиковая» и колебания ' +
+    'незначительно.',
 }
 
 export const dictionaries: { en: Record<DictKey, DictValue>; uz: Partial<Record<DictKey, DictValue>>; ru: Partial<Record<DictKey, DictValue>> } = {
@@ -4735,3 +5296,37 @@ export const dictionaries: { en: Record<DictKey, DictValue>; uz: Partial<Record<
   uz,
   ru,
 }
+
+// ---------------------------------------------------------------------------
+// The non-hook resolver, for the modules that cannot call `useT()`
+// ---------------------------------------------------------------------------
+
+/**
+ * `src/report/**` is framework-agnostic — it is run by tests, by the AI context
+ * builder and by the worker as well as by React — so it cannot call `useT()`.
+ * Those modules take a `Translate` as an INJECTED argument, exactly the way
+ * `buildTiming` already takes `nameOf`, and default to `englishText` when the
+ * caller has none. The fallback chain is the same one `useT` implements:
+ * current language -> English -> the key itself.
+ *
+ * `TFunction` (useT.ts) is assignable to this type, so a component passes its
+ * own `t` straight in.
+ */
+export type Translate = (key: DictKey, vars?: Vars) => string
+
+export function translator(lang: Lang): Translate {
+  return (key, vars = {}) => {
+    const localized = lang === 'en' ? undefined : dictionaries[lang][key]
+    const entry = localized ?? en[key]
+    if (entry === undefined) return key
+    return typeof entry === 'function' ? entry(vars) : entry
+  }
+}
+
+/**
+ * The default every report module falls back to. English is the source of
+ * truth, so a builder called without a `t` produces exactly the sentences it
+ * produced before this indirection existed — which is what keeps the plain-text
+ * export, the AI context and the whole report test suite unchanged.
+ */
+export const englishText: Translate = translator('en')

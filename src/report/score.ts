@@ -27,6 +27,18 @@
  * one-half of immediate-release at 77% relative bioavailability. That asymmetry is the
  * honest state of the data and is reported as such.
  *
+ * LANGUAGE. The reason lines and the refusals below are sentences the PRODUCT wrote, so
+ * they translate. This module is framework-agnostic and cannot call `useT()`, so the
+ * translate function is INJECTED — `rankOptions({ ..., t })`. With no `t` everything
+ * resolves in English, identical to the literals that used to live here, which is what
+ * keeps the AI context and the test suite unchanged. The normative refusal wording still
+ * has exactly one home: `FORMULATION_REFUSAL_TEXT` in ./disclaimer.ts is what the English
+ * dictionary entry is built from, so the two cannot drift.
+ *
+ * What never translates inside a reason line: drug names, units, every number, and the
+ * dataset's own channel identifiers (a lab or risk channel name is matched back to the
+ * data, like a drug name).
+ *
  * Owned by Agent RUL.
  */
 
@@ -41,7 +53,7 @@ import type {
 } from '../types'
 import type { PatientModelFile, PilSimData } from '../data/load'
 import type { EvaluationResult } from '../rules/evaluate'
-import { FORMULATION_REFUSAL_CHIP, FORMULATION_REFUSAL_TEXT } from './disclaimer'
+import { englishText, type Translate } from '../i18n/dictionary'
 
 // ---------------------------------------------------------------------------
 // Weights — all ESTIMATED, all mutable, all meant to be exposed as sliders
@@ -371,6 +383,7 @@ function riskPenalty(
   risks: Record<string, number>,
   hazards: Record<string, number>,
   w: ScoreWeights,
+  t: Translate,
 ): { total: number; lines: string[]; merged: Record<string, number>; sources: Record<string, 'cited' | 'derived'> } {
   const merged: Record<string, number> = {}
   const sources: Record<string, 'cited' | 'derived'> = {}
@@ -395,7 +408,7 @@ function riskPenalty(
     const weight = Number(w[`risk_${name}`] ?? w.risk_default) || 0
     const pen = 100 * p * weight
     total += pen
-    if (pen >= 1) lines.push(`${humanise(name)} risk ${Math.round(p * 100)}%`)
+    if (pen >= 1) lines.push(t('sim.score.text.riskLine', { name: humanise(name), pct: Math.round(p * 100) }))
   }
   lines.sort()
   return { total, lines, merged, sources }
@@ -460,6 +473,7 @@ function labPenalty(
   summary: RunSummary,
   model: PatientModelFile | null,
   w: ScoreWeights,
+  t: Translate,
 ): { total: number; lines: string[] } {
   const ranges = { ...FALLBACK_RANGES, ...labReferenceRanges(model) }
   let total = 0
@@ -477,8 +491,18 @@ function labPenalty(
     const outside = v < r[0] || v > r[1]
     lines.push(
       outside
-        ? `${humanise(stateVar)} left its reference range (${round1(v)} vs ${r[0]}–${r[1]})`
-        : `${Math.round(p * 100)}% chance ${humanise(stateVar).toLowerCase()} leaves its reference range (${r[0]}–${r[1]})`,
+        ? t('sim.score.text.labOutside', {
+            name: humanise(stateVar),
+            value: round1(v),
+            lo: r[0],
+            hi: r[1],
+          })
+        : t('sim.score.text.labChance', {
+            pct: Math.round(p * 100),
+            name: humanise(stateVar).toLowerCase(),
+            lo: r[0],
+            hi: r[1],
+          }),
     )
   }
   return { total, lines }
@@ -527,10 +551,13 @@ export function formulationCitation(substanceId: string, data?: PilSimData | nul
 export function formulationRefusal(
   substanceId: string,
   data?: PilSimData | null,
+  t: Translate = englishText,
 ): { reason: string; citation?: Provenance } | null {
   if (formulationDataAvailable(substanceId, data)) return null
   return {
-    reason: FORMULATION_REFUSAL_TEXT,
+    // A refusal is a DECISION, not an accident: "not determined" in every language,
+    // never "no data available". See the ⚠️ note in src/i18n/dictionary.ts.
+    reason: t('sim.formulation.text.refusal'),
     citation: {
       status: 'NOT_FOUND',
       note:
@@ -542,17 +569,22 @@ export function formulationRefusal(
   }
 }
 
-function scoreFormulation(c: ScoreCandidate, data: PilSimData | null, w: ScoreWeights): FormulationVerdict {
+function scoreFormulation(
+  c: ScoreCandidate,
+  data: PilSimData | null,
+  w: ScoreWeights,
+  t: Translate,
+): FormulationVerdict {
   const actives = c.regimen.doses.map((d) => d.substanceId)
   const refusals = actives
-    .map((id) => ({ id, refusal: formulationRefusal(id, data) }))
+    .map((id) => ({ id, refusal: formulationRefusal(id, data, t) }))
     .filter((x) => x.refusal !== null)
 
   if (refusals.length > 0) {
     return {
       available: false,
       score: null,
-      reasons: [FORMULATION_REFUSAL_CHIP],
+      reasons: [t('sim.formulation.text.refusalChip')],
       refusal: refusals[0].refusal!,
     }
   }
@@ -562,11 +594,8 @@ function scoreFormulation(c: ScoreCandidate, data: PilSimData | null, w: ScoreWe
     return {
       available: false,
       score: null,
-      reasons: [FORMULATION_REFUSAL_CHIP],
-      refusal: {
-        reason:
-          'Best formulation type: not determined. The run did not produce a concentration profile, so trough-to-peak ratio and fluctuation could not be measured.',
-      },
+      reasons: [t('sim.formulation.text.refusalChip')],
+      refusal: { reason: t('sim.formulation.text.noProfile') },
     }
   }
 
@@ -587,11 +616,14 @@ function scoreFormulation(c: ScoreCandidate, data: PilSimData | null, w: ScoreWe
       Number(w.form_adherence) * adherenceS)
 
   const reasons = [
-    `Trough-to-peak ratio ${cov.tpr.toFixed(2)}${cov.derived ? ' (from the concentration profile)' : ''}`,
-    perDay <= 1 ? 'Once daily' : `${perDay}× daily dosing`,
+    t('sim.formulation.text.tprReason', {
+      value: cov.tpr.toFixed(2),
+      derived: cov.derived ? t('sim.formulation.text.tprDerivedClause') : '',
+    }),
+    perDay <= 1 ? t('sim.formulation.text.onceDaily') : t('sim.formulation.text.timesDaily', { n: perDay }),
   ]
   if (typeof c.forgivenessHours !== 'number') {
-    reasons.push('Forgiveness after a missed dose was not measured; trough-to-peak used as a proxy.')
+    reasons.push(t('sim.formulation.text.forgivenessProxy'))
   }
   return { available: true, score: Math.round(score), reasons }
 }
@@ -605,17 +637,28 @@ export interface RankOptions {
   candidates: ScoreCandidate[]
   data?: PilSimData | null
   weights?: ScoreWeights
+  /**
+   * Translate function for the generated reason lines and refusals. Injected because this
+   * module cannot call `useT()`. Omit it for English.
+   */
+  t?: Translate
 }
 
 /**
  * Score and rank. Returns `RankedOption[]` (as `ScoredOption[]`, which extends it),
  * ordered best first, with DISQUALIFIED arms last and carrying no numbers.
  */
-export function rankOptions({ patient, candidates, data = null, weights = SCORE_WEIGHTS }: RankOptions): ScoredOption[] {
+export function rankOptions({
+  patient,
+  candidates,
+  data = null,
+  weights = SCORE_WEIGHTS,
+  t = englishText,
+}: RankOptions): ScoredOption[] {
   const model = data?.patientModel ?? null
   const target = bpTarget(patient)
 
-  const scored = candidates.map((c) => scoreOne(patient, c, model, data, weights, target))
+  const scored = candidates.map((c) => scoreOne(patient, c, model, data, weights, target, t))
 
   const tierRank = (t: ScoredOption['tier']) => (t === 'ALLOWED' ? 0 : t === 'OVERRIDE_REQUIRED' ? 1 : 2)
   const floor = Number(weights.safetyFloor) || 0
@@ -651,10 +694,7 @@ export function rankOptions({ patient, candidates, data = null, weights = SCORE_
       }
     }
     if (leader.tiedWithLeader) {
-      const note =
-        'Too close to call: the arms within a point of each other are not separated by this model. ' +
-        'Every weight in the composite is an estimate, so treat them as equivalent and choose on the ' +
-        'components (efficacy, safety, appropriateness) shown beside the score.'
+      const note = t('sim.score.text.tooCloseToCall')
       for (const o of ordered) if (o.tiedWithLeader && !o.reasons.includes(note)) o.reasons.unshift(note)
     }
   }
@@ -669,6 +709,7 @@ function scoreOne(
   data: PilSimData | null,
   w: ScoreWeights,
   target: BpTarget,
+  t: Translate,
 ): ScoredOption {
   const m = c.modifiers
   const hits = m.hits
@@ -691,16 +732,20 @@ function scoreOne(
       penalties: { rule: 0, risk: 0, lab: 0 },
       tier: 'DISQUALIFIED',
       tiedWithLeader: false,
-      reasons: m.blockReasons.length > 0 ? m.blockReasons : [blocker?.warningText ?? 'Absolutely contraindicated.'],
+      reasons:
+        m.blockReasons.length > 0
+          ? m.blockReasons
+          : [blocker?.warningText ?? t('sim.score.text.absolutelyContraindicated')],
       hits,
       target,
       populationN: 0,
       formulation: { available: false, score: null, reasons: [] },
       refusal: {
-        reason:
-          `This arm is not ranked. ${blocker?.title ?? 'An absolute contraindication'} fired at severity ` +
-          `${blocker?.severity ?? 'contraindicated_absolute'}. Printing a safety score next to an absolute ` +
-          `contraindication invites someone to read it as a tradeoff. It is not one.`,
+        // The rule's own title and severity are the dataset's words and stay as they are.
+        reason: t('sim.score.text.armNotRanked', {
+          title: blocker?.title ?? t('sim.score.text.anAbsoluteContraindication'),
+          severity: blocker?.severity ?? 'contraindicated_absolute',
+        }),
         citation: blocker?.citation,
       },
     }
@@ -722,8 +767,8 @@ function scoreOne(
 
   // --- S ---------------------------------------------------------------------
   const penRule = rulePenalty(hits, w)
-  const penRisk = riskPenalty(m.risks, c.summary.hazards, w)
-  const penLab = labPenalty(c.summary, model, w)
+  const penRisk = riskPenalty(m.risks, c.summary.hazards, w, t)
+  const penLab = labPenalty(c.summary, model, w, t)
   const S = clamp100(100 - penRule - penRisk.total - penLab.total + m.scoreDeltas.safety)
 
   // --- A ---------------------------------------------------------------------
@@ -733,7 +778,7 @@ function scoreOne(
   const compositeExact = Number(w.efficacy) * E + Number(w.safety) * S + wA * A
   const composite = Math.round(compositeExact)
 
-  const formulation = scoreFormulation(c, data, w)
+  const formulation = scoreFormulation(c, data, w, t)
 
   const reasons = buildReasons({
     patient,
@@ -747,6 +792,7 @@ function scoreOne(
     caveats: m.caveats ?? [],
     formulation,
     tier: m.tier,
+    t,
   })
 
   return {
@@ -789,16 +835,17 @@ function buildReasons(args: {
   caveats: { ruleId: string; channel?: string; text: string; basis?: string }[]
   formulation: FormulationVerdict
   tier: string
+  t: Translate
 }): string[] {
   const out: string[] = []
-  const { goalP, target, candidate, hits, populationN } = args
+  const { goalP, target, candidate, hits, populationN, t } = args
 
   out.push(
     populationN === 1
-      ? `Single simulated subject reaches ${target.label} with probability ${Math.round(goalP * 100)}% (assumed response spread; N = 1)`
-      : `${Math.round(goalP * 100)}% of simulated patients reached ${target.label}`,
+      ? t('sim.score.text.goalSingle', { target: target.label, pct: Math.round(goalP * 100) })
+      : t('sim.score.text.goalPopulation', { pct: Math.round(goalP * 100), target: target.label }),
   )
-  out.push(`Systolic pressure falls ${Math.round(candidate.summary.deltaSbp)} mmHg at steady state`)
+  out.push(t('sim.score.text.sbpFall', { mmHg: Math.round(candidate.summary.deltaSbp) }))
 
   // Rule chips: most severe first, negative before positive.
   for (const h of hits.slice(0, 3)) {
@@ -810,12 +857,12 @@ function buildReasons(args: {
   // Modelling caveats go in the REASONS, next to the recommendation they changed —
   // not in a tooltip. An assumption that moves a dose has to be read by whoever reads
   // the dose. These are stated as assumptions, never as label instructions.
-  for (const c of args.caveats) out.push(modellingCaveatChip(c))
-  if (args.formulation.refusal) out.push(FORMULATION_REFUSAL_CHIP)
+  for (const c of args.caveats) out.push(modellingCaveatChip(c, t))
+  if (args.formulation.refusal) out.push(t('sim.formulation.text.refusalChip'))
   else out.push(...args.formulation.reasons.slice(0, 1))
 
   if (args.tier === 'OVERRIDE_REQUIRED') {
-    out.unshift('Ranked below every arm with no override requirement — a guideline says avoid, not forbid')
+    out.unshift(t('sim.score.text.rankedBelowOverride'))
   }
   return out
 }
@@ -830,11 +877,16 @@ function buildReasons(args: {
  * visible without interaction. Deliberately worded so it cannot be misread as the label
  * prescribing a lower dose in a subgroup — the label does no such thing.
  */
-export function modellingCaveatChip(c: { text: string; basis?: string }): string {
+export function modellingCaveatChip(
+  c: { text: string; basis?: string },
+  t: Translate = englishText,
+): string {
   const assumed = /constant proportional hazard|no published sex-BY-dose|pooled across doses/i.test(c.text)
+  // The generic form carries the RULE's own caveat sentence, which stays in the dataset's
+  // words; only the frame around it translates.
   return assumed
-    ? 'Modelling assumption: the sex difference is applied as a constant proportional effect across the dose range. The label reports sex and dose separately and states no sex-by-dose figure — this interaction is assumed, not labelled.'
-    : `Modelling assumption: ${c.text.split('. ')[0]}.`
+    ? t('sim.score.text.caveatSexByDose')
+    : t('sim.score.text.caveatGeneric', { text: c.text.split('. ')[0] })
 }
 
 function clamp100(x: number): number {

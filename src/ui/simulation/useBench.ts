@@ -13,12 +13,13 @@
  * entire point of exposing the weights.
  */
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PatientState, Regimen, RunSummary, ScoreWeights } from '../../types'
 import type { PilSimData } from '../../data/load'
 import { evaluate, lastRunWasSynthetic, runSimulationQuiet, type EvaluationResult } from './adapters'
 import { effectTroughToPeak, rank, type ScoredOption } from './scoring'
 import { nextRunId } from './useSimRunner'
+import { useLang, useT } from '../../i18n'
 
 export interface BenchArmResult {
   regimen: Regimen
@@ -69,6 +70,16 @@ export function useBench() {
   const patientRef = useRef<PatientState | null>(null)
   const dataRef = useRef<PilSimData | null>(null)
   const popRef = useRef(1)
+  // The scorer writes its reason lines and refusals as sentences, and those go on
+  // screen, so it is handed this hook's `t`. Kept in a ref because `run` and
+  // `rescore` are stable callbacks, and re-ranked below when the language changes —
+  // re-scoring is pure arithmetic over the arms already simulated, so a language
+  // switch never re-runs the engine.
+  const t = useT()
+  const lang = useLang()
+  const tRef = useRef(t)
+  tRef.current = t
+  const weightsRef = useRef<ScoreWeights | null>(null)
 
   const run = useCallback(
     async (
@@ -83,6 +94,7 @@ export function useBench() {
       patientRef.current = patient
       dataRef.current = data
       popRef.current = opts.populationN
+      weightsRef.current = weights
       setState({
         ...EMPTY,
         running: true,
@@ -130,6 +142,7 @@ export function useBench() {
         arms.map((a) => ({ ...a, populationN: opts.populationN })),
         weights,
         data,
+        tRef.current,
       )
 
       setState({
@@ -154,14 +167,23 @@ export function useBench() {
     const arms = armsRef.current
     const patient = patientRef.current
     if (!arms.length || !patient) return
+    weightsRef.current = weights
     const { ranked, error } = rank(
       patient,
       arms.map((a) => ({ ...a, populationN: popRef.current })),
       weights,
       dataRef.current,
+      tRef.current,
     )
     setState((s) => ({ ...s, ranked, scoringError: error }))
   }, [])
+
+  // A ranking already on screen was written in the language it was scored in, so a
+  // language switch re-scores it. Same arms, same weights, same numbers — only the
+  // sentences change.
+  useEffect(() => {
+    if (armsRef.current.length && patientRef.current && weightsRef.current) rescore(weightsRef.current)
+  }, [lang, rescore])
 
   const reset = useCallback(() => {
     armsRef.current = []

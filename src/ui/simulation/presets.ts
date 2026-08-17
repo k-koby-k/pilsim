@@ -369,29 +369,33 @@ export const SUBJECT_PRESETS: SubjectPreset[] = [
 // ---------------------------------------------------------------------------
 
 /* The refusal wording is normative and lives in src/report/disclaimer.ts.
-   Re-exported, never retyped — the report, the chip and this page must agree. */
-export { FORMULATION_REFUSAL_TEXT } from '../../report/disclaimer'
-import { FORMULATION_REFUSAL_TEXT as REFUSAL } from '../../report/disclaimer'
+   Re-exported, never retyped — the report, the chip and this page must agree.
 
-export const FORMULATION_STATUS: Record<string, { status: 'ranked' | 'refused' | 'not_indicated'; text: string; source?: string }> = {
+   These verdicts are sentences the PRODUCT wrote, so they are held as dictionary
+   KEYS and rendered through `t()` at the call site: they used to print in English
+   under every language, above headings that were translated. The English entry
+   behind `sim.formulation.text.refusal` is built from FORMULATION_REFUSAL_TEXT
+   itself, so the normative wording still has exactly one home. Source lines,
+   drug names and the label citations beside them stay verbatim. */
+export { FORMULATION_REFUSAL_TEXT } from '../../report/disclaimer'
+
+export const FORMULATION_STATUS: Record<
+  string,
+  { status: 'ranked' | 'refused' | 'not_indicated'; textKey: DictKey; source?: string }
+> = {
   metoprolol: {
     status: 'ranked',
-    text:
-      'Extended-release preferred. Succinate ER peak plasma levels average one-fourth to one-half ' +
-      'those of a corresponding dose of conventional metoprolol, which lowers peak β-blockade and ' +
-      'reduces β2 spillover at peak — the mechanism that matters for the airway archetype.',
+    textKey: 'sim.formulation.text.metoprololRanked',
     source: 'FDA label, metoprolol succinate ER (openFDA), retrieved 2026-08-17 [P4]',
   },
   amlodipine: {
     status: 'not_indicated',
-    text:
-      'Extended-release formulation not indicated — the drug’s 30–50 h half-life already produces ' +
-      'a flat concentration profile, so an ER form would change trough-to-peak and fluctuation negligibly.',
+    textKey: 'sim.formulation.text.amlodipineNotIndicated',
     source: 'FDA label, amlodipine besylate (openFDA), retrieved 2026-08-17 [P1]',
   },
-  lisinopril: { status: 'refused', text: REFUSAL },
-  losartan: { status: 'refused', text: REFUSAL },
-  hydrochlorothiazide: { status: 'refused', text: REFUSAL },
+  lisinopril: { status: 'refused', textKey: 'sim.formulation.text.refusal' },
+  losartan: { status: 'refused', textKey: 'sim.formulation.text.refusal' },
+  hydrochlorothiazide: { status: 'refused', textKey: 'sim.formulation.text.refusal' },
 }
 
 // ---------------------------------------------------------------------------

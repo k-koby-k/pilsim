@@ -626,6 +626,11 @@ export function SimulationPage({ onNavigate }: { onNavigate?: (p: PageId) => voi
     // to give the planner something to choose. That is not a "best of" claim —
     // the bench is what makes those, and it suppresses single-arm rankings by
     // design — it is only how the plan learns which arm it is writing for.
+    //
+    // Deliberately scored WITHOUT a `t`: this ranking is never rendered, it is
+    // material for the model. The context stays English so the numbers in it
+    // trace the same way in every language; the model is instructed separately
+    // to answer in the language the user wrote in (src/ai/chat.ts).
     const rankedForPlan =
       activeBench?.ranked?.length
         ? activeBench.ranked

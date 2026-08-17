@@ -57,12 +57,31 @@
  * ⚠️ data/rules.json emits no dose-timing effect for any of the five substances, so none of
  *    this comes from PilSim's guideline layer. It is read from the trials directly and is
  *    marked `literature`, never `guideline`.
+ *
+ * ---------------------------------------------------------------------------
+ * LANGUAGE
+ * ---------------------------------------------------------------------------
+ * The sentences in this file are ones the PRODUCT wrote, so they translate. This module
+ * cannot call `useT()` — it is run by tests, by the AI context builder and by the report —
+ * so the translate function is INJECTED, the same way `nameOf` already is: pass `t` in
+ * `PlanTimingInput` and every generated sentence comes back in that language. With no `t`
+ * the default is `englishText`, which resolves the same dictionary in English, so the
+ * plain-text export, the AI context and every existing test see exactly the sentences this
+ * module produced before the indirection existed.
+ *
+ * What NEVER changes language, in any of the three: trial names (TIME, BedMed, MAPEC,
+ * Hygia), journal names, PMIDs, DOIs, verbatim quoted titles, every number, unit and
+ * statistic, and every drug name. They are interpolated into the translated sentence or
+ * written into the translation unchanged, so a reader in Uzbek can still check us against
+ * the paper. The verdict itself is NEGATIVE in all three languages — see the ⚠️ notes on
+ * the `sim.timing.text.*` keys in src/i18n/dictionary.ts.
  */
 
 import type { DrugId, Provenance, Regimen } from '../types'
 import type { PilSimData, SubstanceRecord } from '../data/load'
 import type { Measured } from '../types'
 import type { PlanBasis, PlanGap, PlanStatement } from './plan'
+import { englishText, type Translate } from '../i18n/dictionary'
 import {
   doseIntervalCoverage,
   TIMING_MARKED_TROUGH_FRACTION,
@@ -384,7 +403,11 @@ function quotableCitation(p?: Provenance): Provenance | undefined {
  * that whole window lands in the night. It says NOTHING about cardiovascular risk, and the
  * sentence is written so it cannot be read as if it did.
  */
-function thiazideMorningReason(name: string, data?: PilSimData | null): DoseTimingReason | null {
+function thiazideMorningReason(
+  name: string,
+  data: PilSimData | null | undefined,
+  t: Translate,
+): DoseTimingReason | null {
   const rec = substanceRecord('hydrochlorothiazide', data)
   const onset = clinicalEffect(rec, 'onset_h')
   const peak = clinicalEffect(rec, 'peak_effect_h')
@@ -393,18 +416,19 @@ function thiazideMorningReason(name: string, data?: PilSimData | null): DoseTimi
 
   const range = Array.isArray(duration.range) ? (duration.range as number[]) : null
   const durationText =
-    range && range.length === 2 ? `about ${r1(range[0])}–${r1(range[1])} hours` : `about ${r1(duration.value!)} hours`
+    range && range.length === 2
+      ? t('sim.timing.text.durationRange', { lo: r1(range[0]), hi: r1(range[1]) })
+      : t('sim.timing.text.durationSingle', { value: r1(duration.value!) })
 
   return {
     kind: 'tolerability',
     confidence: 'high',
-    text:
-      `Take ${name} in the morning, so its diuresis happens while you are up: the label puts the ` +
-      `onset at about ${onset ? r1(onset.value!) : 2} hours after the dose` +
-      (peak ? `, the peak at about ${r1(peak.value!)}` : '') +
-      `, and the whole episode at ${durationText}. An evening dose spends that window in the night and wakes ` +
-      `you to pass urine. This is about your sleep, not about your heart — it carries no claim of any effect on ` +
-      `heart attacks or strokes.`,
+    text: t('sim.timing.text.thiazideMorning', {
+      name,
+      onset: onset ? r1(onset.value!) : 2,
+      peakClause: peak ? t('sim.timing.text.thiazidePeakClause', { peak: r1(peak.value!) }) : '',
+      duration: durationText,
+    }),
     citation: quotableCitation(duration.provenance),
     basis: {
       kind: 'dataset',
@@ -426,7 +450,8 @@ function thiazideMorningReason(name: string, data?: PilSimData | null): DoseTimi
 function firstDoseHypotensionReason(
   substanceId: DrugId,
   name: string,
-  data?: PilSimData | null,
+  data: PilSimData | null | undefined,
+  t: Translate,
 ): DoseTimingReason | null {
   const rec = substanceRecord(substanceId, data)
   const ae = adverseEffect(rec, 'hypotension')
@@ -436,13 +461,13 @@ function firstDoseHypotensionReason(
   return {
     kind: 'tolerability',
     confidence: 'moderate',
-    text:
-      `Take the FIRST dose of ${name} at bedtime, then at whatever time suits you thereafter: the dataset records ` +
-      `hypotension for it with an onset of "${ae.onset ?? 'first dose, hours'}", so if that first dose does drop ` +
-      `your pressure enough to make you light-headed, it is better that you are already lying down.` +
-      (mechanism ? ` The dataset's own words on it: ${mechanism}.` : '') +
-      ` The hazard is labelled; taking the first dose at bedtime is an inference FROM it and not a labelled ` +
-      `instruction, which is why this is stated with moderate rather than high confidence.`,
+    // `ae.onset` and `mechanism` are the DATASET's own words, quoted under a citation.
+    // They stay exactly as the dataset words them in every language.
+    text: t('sim.timing.text.firstDoseHypotension', {
+      name,
+      onset: ae.onset ?? 'first dose, hours',
+      mechanismClause: mechanism ? t('sim.timing.text.datasetOwnWords', { mechanism }) : '',
+    }),
     citation: quotableCitation(ae.provenance),
     basis: {
       kind: 'dataset',
@@ -467,28 +492,35 @@ function pharmacokineticReason(
   name: string,
   c: DoseIntervalCoverage,
   tolerabilityNamesAnHour: boolean,
+  t: Translate,
 ): DoseTimingReason {
   const troughPct = Math.round(c.troughFractionOfPeak * 100)
-  const swing = Number.isFinite(c.peakTroughRatio) ? `${r1(c.peakTroughRatio)}-fold` : 'unbounded'
+  const swing = Number.isFinite(c.peakTroughRatio)
+    ? t('sim.timing.text.pkSwingFold', { value: r1(c.peakTroughRatio) })
+    : t('sim.timing.text.pkSwingUnbounded')
   const via =
     c.effectiveSpeciesId !== c.substanceId
-      ? ` ${name} itself is short-lived; what acts across the interval is its metabolite ${c.effectiveSpeciesId.toUpperCase()}, ` +
-        `whose ${r1(c.effectiveHalfLifeH)} h half-life is the one that matters here.`
+      ? t('sim.timing.text.pkViaMetabolite', {
+          name,
+          species: c.effectiveSpeciesId.toUpperCase(),
+          halfLife: r1(c.effectiveHalfLifeH),
+        })
       : ''
-  const perDayNote =
-    c.perDay > 1
-      ? ` This is a ${c.perDay}-times-daily schedule, so the question is spacing rather than which hour of the day.`
-      : ''
+  const perDayNote = c.perDay > 1 ? t('sim.timing.text.pkPerDayNote', { perDay: c.perDay }) : ''
 
   if (c.sensitivity === 'negligible') {
     return {
       kind: 'pharmacokinetic',
       confidence: 'high',
-      text:
-        `For ${name} the hour is close to irrelevant on pharmacokinetic grounds alone: with a ` +
-        `${r1(c.effectiveHalfLifeH)} h half-life the concentration only swings ${swing} across the ` +
-        `${r1(c.intervalH)} h between doses and is still at ${troughPct}% of its peak when the next dose is due, ` +
-        `so no part of the day is meaningfully better covered than any other.${via}${perDayNote}`,
+      text: t('sim.timing.text.pkNegligible', {
+        name,
+        halfLife: r1(c.effectiveHalfLifeH),
+        swing,
+        intervalH: r1(c.intervalH),
+        troughPct,
+        via,
+        perDayNote,
+      }),
       basis: {
         kind: 'engine',
         computation: 'doseIntervalCoverage() — steady-state peak-to-trough on the Bateman superposition the simulation runs on',
@@ -500,11 +532,14 @@ function pharmacokineticReason(
     return {
       kind: 'pharmacokinetic',
       confidence: 'high',
-      text:
-        `${name} swings ${swing} across the ${r1(c.intervalH)} h between doses and is down to ${troughPct}% of its ` +
-        `peak by the time the next one is due, so on this schedule part of every day is barely covered whichever ` +
-        `hour you choose. Moving the dose moves the gap, it does not close it — closing it means a divided dose or ` +
-        `the extended-release form, which is a prescribing decision, not a timing one.${via}${perDayNote}`,
+      text: t('sim.timing.text.pkMarked', {
+        name,
+        swing,
+        intervalH: r1(c.intervalH),
+        troughPct,
+        via,
+        perDayNote,
+      }),
       basis: {
         kind: 'engine',
         computation: 'doseIntervalCoverage() — steady-state peak-to-trough on the Bateman superposition the simulation runs on',
@@ -515,15 +550,15 @@ function pharmacokineticReason(
   return {
     kind: 'pharmacokinetic',
     confidence: 'high',
-    text:
-      `${name} falls to ${troughPct}% of its peak — a ${swing} swing — across the ${r1(c.intervalH)} h between ` +
-      `doses, so there is room for the hour to matter in principle. It does not follow that one hour controls ` +
-      `blood pressure better than another: the engine models no circadian rhythm, and the trials that looked ` +
-      `found no difference.` +
-      (tolerabilityNamesAnHour
-        ? ` The hour recommended above is recommended on tolerability grounds, not on this one.`
-        : '') +
-      `${via}${perDayNote}`,
+    text: t('sim.timing.text.pkModerate', {
+      name,
+      troughPct,
+      swing,
+      intervalH: r1(c.intervalH),
+      tolerabilityClause: tolerabilityNamesAnHour ? t('sim.timing.text.pkHourFromTolerability') : '',
+      via,
+      perDayNote,
+    }),
     basis: {
       kind: 'engine',
       computation: 'doseIntervalCoverage() — steady-state peak-to-trough on the Bateman superposition the simulation runs on',
@@ -536,7 +571,11 @@ function pharmacokineticReason(
  * dose is as extended-release, or split twice daily. Only offered when the immediate-release
  * once-daily schedule is the one with the hole in it.
  */
-function metoprololFormContrast(mgPerDay: number, form: string | undefined): PlanStatement | null {
+function metoprololFormContrast(
+  mgPerDay: number,
+  form: string | undefined,
+  t: Translate,
+): PlanStatement | null {
   if (form) return null
   const ir = doseIntervalCoverage({ substanceId: 'metoprolol', mg: mgPerDay, perDay: 1 })
   if (ir.sensitivity !== 'marked') return null
@@ -548,11 +587,12 @@ function metoprololFormContrast(mgPerDay: number, form: string | undefined): Pla
   })
   const bid = doseIntervalCoverage({ substanceId: 'metoprolol', mg: mgPerDay / 2, perDay: 2 })
   return {
-    text:
-      `Concretely: the same ${r1(mgPerDay)} mg/day of metoprolol swings ${r1(ir.peakTroughRatio)}-fold as a ` +
-      `once-daily immediate-release tablet, ${r1(er.peakTroughRatio)}-fold as the extended-release succinate, and ` +
-      `${r1(bid.peakTroughRatio)}-fold split into two doses. If the flat profile is what you want, that is the ` +
-      `lever — not the clock.`,
+    text: t('sim.timing.text.metoprololContrast', {
+      mgPerDay: r1(mgPerDay),
+      ir: r1(ir.peakTroughRatio),
+      er: r1(er.peakTroughRatio),
+      bid: r1(bid.peakTroughRatio),
+    }),
     basis: {
       kind: 'engine',
       computation: 'doseIntervalCoverage() on the same daily dose as IR once daily, ER once daily and IR twice daily',
@@ -579,58 +619,30 @@ function metoprololFormContrast(mgPerDay: number, form: string | undefined): Pla
  * them, and have been challenged in print over source-data verification. The product says
  * which way it lands and why, and it does not hedge into silence.
  */
-export function buildTimingOutcomeEvidence(): TimingOutcomeEvidence {
+export function buildTimingOutcomeEvidence(t: Translate = englishText): TimingOutcomeEvidence {
   const statements: PlanStatement[] = [
     {
-      text:
-        'Taking your blood-pressure tablets at night has NOT been shown to prevent heart attacks, strokes or ' +
-        'deaths. If you have heard otherwise, this product does not agree, and the paragraphs below say why.',
+      text: t('sim.timing.text.outcomeVerdict'),
       basis: literature(TIMING_EVIDENCE.time2022),
     },
     {
-      text:
-        'Two large randomised trials looked for that benefit and did not find it. TIME randomised 21 104 UK adults ' +
-        'to morning or evening dosing and followed them a median of 5.2 years: a vascular death, heart attack or ' +
-        'stroke occurred in 362 (3.4 %) of the evening group and 390 (3.7 %) of the morning group, hazard ratio ' +
-        '0.95 (95 % CI 0.83–1.10), p=0.53. BedMed randomised 3357 Canadian primary-care adults to bedtime or ' +
-        'morning and followed them a median of 4.6 years: 2.3 against 2.4 events per 100 patient-years, adjusted ' +
-        'hazard ratio 0.96 (95 % CI 0.77–1.19), p=.70.',
+      text: t('sim.timing.text.outcomeTrials'),
       basis: literature(TIMING_EVIDENCE.time2022),
     },
     {
-      text:
-        'The claim of a benefit comes from two studies by one research group — MAPEC (2010) and the Hygia ' +
-        'Chronotherapy Trial (2020), whose title is "Bedtime hypertension treatment improves cardiovascular risk ' +
-        'reduction". Neither has been retracted. Hygia carries TWO Expressions of Concern from the European Heart ' +
-        'Journal (2020;41(16):1600 and 2020;41(48):4564), and eight hypertension researchers published a challenge ' +
-        'to the project titled "Missing Verification of Source Data in Hypertension Research: The HYGIA PROJECT in ' +
-        'Perspective". PilSim deliberately does not reproduce Hygia\'s effect size: a precise, memorable number ' +
-        'from a contested paper is harder to un-read than it is to qualify.',
+      text: t('sim.timing.text.outcomeContested'),
       basis: literature(TIMING_EVIDENCE.hygia2020),
     },
     {
-      text:
-        'The safety worry runs the other way too, and it was also answered: BedMed found no excess of falls or ' +
-        'fractures, no excess of new glaucoma diagnoses and no difference in cognitive decline at 18 months with ' +
-        'bedtime dosing. So the honest summary is not "night-time dosing is dangerous" either — it is that the ' +
-        'time of day did not change the outcome in either direction.',
+      text: t('sim.timing.text.outcomeSafetyMirror'),
       basis: literature(TIMING_EVIDENCE.bedmed2025),
     },
     {
-      text:
-        'What is still genuinely open is night-time blood pressure as a number, not as an outcome: the OMAN trial ' +
-        '(2025) found bedtime dosing lowered night-time systolic pressure by about 3 mmHg more than morning ' +
-        'dosing. That is a surrogate. No trial has shown that closing that 3 mmHg changes what happens to a ' +
-        'patient, and PilSim cannot identify who has raised night-time pressure in the first place — it models no ' +
-        'circadian rhythm at all.',
+      text: t('sim.timing.text.outcomeSurrogate'),
       basis: literature(TIMING_EVIDENCE.oman2025),
     },
     {
-      text:
-        'So: take them at a time you will reliably keep. TIME\'s own advice, verbatim — "Patients can be advised ' +
-        'that they can take their regular antihypertensive medications at a convenient time that minimises any ' +
-        'undesirable effects." Note that "no best hour" is not "any hour on any day": both trials assigned a fixed ' +
-        'time and kept it, so the recommendation is one consistent time, not a moving one.',
+      text: t('sim.timing.text.outcomeConsistentTime'),
       basis: literature(TIMING_EVIDENCE.time2022),
     },
   ]
@@ -661,16 +673,34 @@ export interface PlanTimingInput {
   nameOf: (id: DrugId) => string
   data?: PilSimData | null
   gaps: PlanGap[]
+  /**
+   * The translate function, injected exactly like `nameOf` — this module cannot call the
+   * `useT()` hook. Omit it and every sentence comes back in English, unchanged.
+   */
+  t?: Translate
+}
+
+/** The four possible answers, in the reader's language. */
+const DOSE_TIME_LABEL_KEY = {
+  morning: 'sim.timing.timeMorning',
+  evening: 'sim.timing.timeEvening',
+  bedtime: 'sim.timing.timeBedtime',
+  any_consistent_time: 'sim.timing.timeAnyConsistent',
+} as const
+
+function timeLabel(t: Translate, when: DoseTimeOfDay): string {
+  return t(DOSE_TIME_LABEL_KEY[when])
 }
 
 /** Which drugs get a `morning` recommendation, and on what grounds. Tolerability only. */
 function tolerabilityReasonFor(
   substanceId: DrugId,
   name: string,
-  data?: PilSimData | null,
+  data: PilSimData | null | undefined,
+  t: Translate,
 ): { suggested: DoseTimeOfDay; reason: DoseTimingReason } | null {
   if (substanceId === 'hydrochlorothiazide') {
-    const reason = thiazideMorningReason(name, data)
+    const reason = thiazideMorningReason(name, data, t)
     return reason ? { suggested: 'morning', reason } : null
   }
   return null
@@ -678,7 +708,8 @@ function tolerabilityReasonFor(
 
 export function buildTiming(input: PlanTimingInput): PlanTiming {
   const { regimen, nameOf, data, gaps } = input
-  const outcomeEvidence = buildTimingOutcomeEvidence()
+  const t = input.t ?? englishText
+  const outcomeEvidence = buildTimingOutcomeEvidence(t)
   const drugs: DoseTiming[] = []
 
   const seen = new Set<DrugId>()
@@ -708,24 +739,22 @@ export function buildTiming(input: PlanTimingInput): PlanTiming {
     reasons.push({
       kind: 'outcome',
       confidence: 'high',
-      text:
-        `No time of day is established to make ${name} better at preventing heart attacks, strokes or deaths. ` +
-        `Randomised trials of morning against evening dosing found no difference in those outcomes.`,
+      text: t('sim.timing.text.drugOutcome', { name }),
       citation: TIMING_EVIDENCE.time2022,
       basis: literature(TIMING_EVIDENCE.time2022),
     })
 
     // 2. Tolerability — where the product genuinely helps.
-    const tolerability = tolerabilityReasonFor(substanceId, name, data)
+    const tolerability = tolerabilityReasonFor(substanceId, name, data, t)
     if (tolerability) reasons.push(tolerability.reason)
 
     // 3. Pharmacokinetics — derived from the engine.
-    reasons.push(pharmacokineticReason(name, coverage, tolerability !== null))
+    reasons.push(pharmacokineticReason(name, coverage, tolerability !== null, t))
 
     // First dose only: ACE inhibitors and ARBs.
-    const firstDoseReason = firstDoseHypotensionReason(substanceId, name, data)
+    const firstDoseReason = firstDoseHypotensionReason(substanceId, name, data, t)
     const firstDose: DoseTimingFirstDose | null = firstDoseReason
-      ? { suggested: 'bedtime', label: DOSE_TIME_LABEL.bedtime, reason: firstDoseReason }
+      ? { suggested: 'bedtime', label: timeLabel(t, 'bedtime'), reason: firstDoseReason }
       : null
     if (firstDoseReason) reasons.push(firstDoseReason)
 
@@ -739,22 +768,22 @@ export function buildTiming(input: PlanTimingInput): PlanTiming {
     const statements: PlanStatement[] = []
     if (suggested === 'any_consistent_time') {
       statements.push({
-        text:
-          `${name}: take it ${DOSE_TIME_LABEL.any_consistent_time}. That is the answer, not a missing one — the ` +
-          `evidence does not establish a best time for this drug, and nothing about it makes one hour easier to ` +
-          `tolerate than another.`,
+        text: t('sim.timing.text.anyTimeStatement', {
+          name,
+          label: timeLabel(t, 'any_consistent_time'),
+        }),
         basis: literature(TIMING_EVIDENCE.time2022),
       })
     } else {
       statements.push({
-        text: `${name}: take it ${DOSE_TIME_LABEL[suggested]}.`,
+        text: t('sim.timing.text.takeAtStatement', { name, label: timeLabel(t, suggested) }),
         basis: tolerability!.reason.basis,
       })
     }
     for (const r of reasons) statements.push({ text: r.text, basis: r.basis })
 
     if (substanceId === 'metoprolol') {
-      const contrast = metoprololFormContrast(mgPerDay, dose.form)
+      const contrast = metoprololFormContrast(mgPerDay, dose.form, t)
       if (contrast) statements.push(contrast)
     }
 
@@ -763,7 +792,7 @@ export function buildTiming(input: PlanTimingInput): PlanTiming {
       name,
       perDay,
       suggested,
-      suggestedLabel: DOSE_TIME_LABEL[suggested],
+      suggestedLabel: timeLabel(t, suggested),
       firstDose,
       primaryKind,
       confidence,
@@ -776,40 +805,28 @@ export function buildTiming(input: PlanTimingInput): PlanTiming {
 
   const statements: PlanStatement[] = [
     {
-      text:
-        'Timing advice in this plan comes in three kinds and they are not interchangeable: what the evidence says ' +
-        'about OUTCOMES (heart attacks and strokes), what makes a drug easier to TOLERATE, and what the ' +
-        'PHARMACOKINETICS allow. Only the second one ever moves a recommended hour.',
+      text: t('sim.timing.text.threeKinds'),
       basis: { kind: 'engine', computation: 'src/report/timing.ts — TimingClaimKind, one tag per reason' },
     },
     {
-      text:
-        'Nothing in PilSim\'s own guideline layer recommends a dose time: data/rules.json emits no timing effect ' +
-        'for any of the five substances. Every outcome statement here is read from the published trials directly ' +
-        'and is marked as literature, not as a guideline recommendation.',
+      text: t('sim.timing.text.noGuidelineTiming'),
       basis: { kind: 'unavailable', reason: 'data/rules.json contains no dose-timing effect for any substance' },
     },
   ]
 
   // The two gaps that matter, both about the one subgroup where the question is still open.
+  // `why` is rendered in the report's limits section, so it translates; the file paths and
+  // the quoted `validity_limits` entry inside it do not.
   gaps.push({
     section: 'timing',
-    what: 'whether this patient in particular would do better on a bedtime dose',
-    why:
-      'The one place the timing question is still live is raised night-time blood pressure and the non-dipper ' +
-      'pattern, and PilSim cannot identify either: data/patient_model.json lists "Circadian rhythm in blood ' +
-      'pressure — no dipper/non-dipper pattern" under `validity_limits.not_modelled`. The product carries no ' +
-      'ambulatory blood-pressure input and would have nothing to read even if it did.',
+    what: t('sim.timing.text.gapNonDipperWhat'),
+    why: t('sim.timing.text.gapNonDipperWhy'),
   })
   gaps.push({
     section: 'timing',
-    what: 'a simulated comparison of a morning against an evening dose',
-    why:
-      'The engine has no circadian rhythm in blood pressure, so a morning and an evening dose produce the same ' +
-      'simulated result by construction. The coverage figures above describe the SHAPE of the concentration curve ' +
-      'across a dosing interval; they say nothing about what the blood pressure is doing at 3 a.m., and this ' +
-      'product will not run a comparison whose answer is a property of its own simplifications.',
+    what: t('sim.timing.text.gapMorningEveningWhat'),
+    why: t('sim.timing.text.gapMorningEveningWhy'),
   })
 
-  return { heading: 'When in the day to take it', drugs, outcomeEvidence, statements }
+  return { heading: t('sim.timing.heading'), drugs, outcomeEvidence, statements }
 }

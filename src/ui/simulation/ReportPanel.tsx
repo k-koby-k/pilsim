@@ -651,8 +651,9 @@ const TIMING_CONFIDENCE_LABEL_KEY: Record<TimingConfidence, DictKey> = {
 
 /**
  * `DoseTimeOfDay` is the real enum `buildTiming` returns — translated here so the four
- * possible answers read in the user's language, while the generated reason sentences
- * (which carry citations, drug names and numbers) stay English like the rest of the report.
+ * possible answers read in the user's language. The generated reason sentences are
+ * translated too, inside `buildTiming` itself, which is handed this component's `t`; the
+ * citations, drug names, trial names and numbers they carry stay verbatim in all three.
  */
 const TIMING_TIME_LABEL_KEY: Record<DoseTimeOfDay, DictKey> = {
   morning: 'sim.timing.timeMorning',
@@ -934,6 +935,12 @@ export function ReportPanel({
   // When in the day to take each drug — src/report/timing.ts, built already,
   // rendered nowhere until this panel. Nothing here is computed; `buildTiming`
   // only reads the regimen and the loaded dataset already sitting in context.
+  //
+  // `t` is passed in the way `nameOf` is: the module is framework-agnostic and
+  // cannot call the hook itself, and its sentences — the outcome verdict above
+  // all — are ones the product wrote, so they must read in the user's language.
+  // `t` is memo-stable per language, so switching language rebuilds the section
+  // and nothing else does.
   const { data: pilsimData } = useData()
   const timing = useMemo(() => {
     const gaps: PlanGap[] = []
@@ -942,9 +949,10 @@ export function ReportPanel({
       nameOf: (id: DrugId) => DRUG_LABEL[id] ?? id,
       data: pilsimData,
       gaps,
+      t,
     })
     return { plan, gaps }
-  }, [run.regimen, pilsimData])
+  }, [run.regimen, pilsimData, t])
 
   return (
     <section className="sim-report" aria-label={t('sim.report.endOfRunAria')}>
@@ -1027,7 +1035,7 @@ export function ReportPanel({
               <ul>
                 {caveats.map((c, i) => (
                   <li key={`${c.ruleId}-${i}`} className="sim-prose">
-                    {modellingCaveatChip(c)}
+                    {modellingCaveatChip(c, t)}
                     {c.basis && <span className="sim-cite">{c.basis}</span>}
                   </li>
                 ))}
@@ -1115,7 +1123,7 @@ export function ReportPanel({
                     <span className="sim-refusal-badge">{t('sim.report.declinedNoData')}</span>
                   )}
                 </div>
-                <p className="sim-prose">{f.text}</p>
+                <p className="sim-prose">{t(f.textKey)}</p>
                 {f.source && <span className="sim-cite">{f.source}</span>}
               </div>
             )
