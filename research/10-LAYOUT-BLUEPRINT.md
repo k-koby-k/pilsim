@@ -35,6 +35,17 @@ to amend this file first, not to place it somewhere plausible.
 The user learns this once and it holds everywhere. Below 1100px of viewport the rail
 moves beneath the centre column rather than compressing.
 
+**Amendment — the Simulation page has no rail.** It is nav + one centre column, and
+the centre takes the whole band (940 + gap + rail ≈ 1480px) the two used to share.
+The rail there held the anatomy scene while the Evidence zone held the *same* scene
+again at full column width — one instrument drawn twice, the rail's copy too small
+to read. Rather than invent a second job for the rail, the product owner removed it:
+"the simulation results are the product's actual output, and they benefit from every
+pixel." The other three pages keep the rail exactly as drawn above, because there the
+anatomy is the only copy and is genuinely the page's headline result. The rule the
+user learns is therefore still one rule — *the rail is the body* — and on the one
+page where the body already has a full-width home, there is nothing for it to hold.
+
 ---
 
 ## 2. The four zones of the centre column
@@ -95,13 +106,17 @@ The rail always shows the body, and what it shows follows the centre column's su
 | Substances | Where the selected substance acts |
 | Pills | Where the composed pill's actives act |
 | Subjects | The selected patient's twin |
-| Simulation, before a run | Where the ticked pills act |
-| Simulation, during and after | The live scene, driven by the frame stream |
+| Simulation | — no rail; see below |
 
 **The rail is a headline result, not a decoration.** It gets real width — 360 to 420px,
-not a strip — and the figure scales to fill it. On the simulation page the scene view
-continues in the centre column's Evidence zone at full width, because a reader who
-scrolls to study the organs wants them large.
+not a strip — and the figure scales to fill it.
+
+**Simulation is the exception.** Its body lives in the centre column's Evidence zone
+at full width and nowhere else: one scene, one tab strip, one caption, drawn at a size
+a clinician can actually read. The rail there duplicated it exactly and was withdrawn
+(§1 amendment). A page must never draw the same instrument twice — if a rail copy and
+a centre copy would say the same thing, the rail is not adding a view, it is halving
+the width of the one that matters.
 
 ---
 

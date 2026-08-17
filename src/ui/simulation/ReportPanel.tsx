@@ -12,8 +12,8 @@
  * whole %, potassium to one decimal, and sourced ranges stay ranges.
  */
 
-import { useMemo } from 'react'
-import type { DrugId, RunSummary } from '../../types'
+import { useMemo, type ReactNode } from 'react'
+import type { DrugId, Measured, Provenance, ProvenanceStatus, RunSummary, SourceTier } from '../../types'
 import { useT, type DictKey } from '../../i18n'
 import { modellingCaveatChip, type DisclaimerText } from './scoring'
 import {
@@ -25,6 +25,9 @@ import {
 } from './presets'
 import type { CompletedRun } from './useSimRunner'
 import { useData } from '../../data/DataProvider'
+import { findSubstance, type PilSimData } from '../../data/load'
+import { isMeasured, view } from '../../data/provenance'
+import './evidence.css'
 import {
   buildTiming,
   type DoseTimeOfDay,
@@ -46,6 +49,573 @@ const RISK_LABEL_KEY: Record<string, DictKey> = {
   hyperuricemia_gout: 'sim.report.riskHyperuricemiaGout',
   peripheral_edema: 'sim.report.riskPeripheralEdema',
   cough: 'sim.report.riskCough',
+}
+
+// ---------------------------------------------------------------------------
+// EVIDENCE — provenance rendered where the claim is made.
+//
+// A clinician testing this product said, of a recommendation, that she did not
+// know how correct the response was. The evidence was already there: every
+// number traces to a regulatory label, a named trial, or an explicit ESTIMATED
+// marker, and `src/data/provenance.ts` has returned all of it — status, tier,
+// source, verbatim quote, URL — since the data layer was written. It was simply
+// never shown at the moment a reader decides whether to believe a result.
+//
+// What is rendered here, and why in this shape:
+//
+//  - The STATUS MARK is never softened. CITED, ESTIMATED and NOT FOUND are the
+//    dataset's own three words, printed as they appear in the file and in every
+//    language, because a translated status could not be matched back to the
+//    data. A NOT FOUND is shown as prominently as a CITED — lisinopril's label
+//    states no numeric blood-pressure reduction at all, and saying so is the
+//    single most trust-building thing on the screen.
+//  - The VERBATIM QUOTE is the payload. It is what lets a doctor check us
+//    against a document she already trusts, so it is always one click away and
+//    never more than one. It is never translated, never paraphrased, and never
+//    shortened.
+//  - Source names, quotes, drug names, units, trial names and PMIDs are
+//    rendered exactly as the source words them, in every language — the same
+//    rule the dictionary header states.
+//
+// Nothing in this section computes or alters a value. It reads the dataset that
+// is already loaded and the provenance objects that already exist.
+// ---------------------------------------------------------------------------
+
+/** One value plus everything needed to check it. Assembled, never invented. */
+export interface EvidenceItem {
+  id: string
+  /** What the parameter is — UI chrome, translated. */
+  label: string
+  /** The value and its unit, verbatim from the dataset. Never translated. */
+  display: string
+  status: ProvenanceStatus
+  source: string | null
+  quote: string | null
+  url: string | null
+  tier: SourceTier | null
+  note: string | null
+  retrieved: string | null
+  /**
+   * Notes in the dataset serve two different purposes. On an ESTIMATED or
+   * NOT_FOUND value the note IS the evidence — the justification, or what was
+   * searched — and must be read. On a CITED value with a quote beside it the
+   * note is usually the data author's working commentary, and printing it
+   * buries the label's own sentence under our internal chatter. So a note is
+   * shown whenever it is load-bearing (no quote, or not CITED) and otherwise
+   * only when the caller says it is essential.
+   */
+  noteIsEssential?: boolean
+}
+
+export interface EvidenceCounts {
+  cited: number
+  estimated: number
+  notFound: number
+  total: number
+}
+
+export function countEvidence(items: EvidenceItem[]): EvidenceCounts {
+  let cited = 0
+  let estimated = 0
+  let notFound = 0
+  for (const i of items) {
+    if (i.status === 'CITED') cited++
+    else if (i.status === 'ESTIMATED') estimated++
+    else notFound++
+  }
+  return { cited, estimated, notFound, total: items.length }
+}
+
+const TIER_LABEL_KEY: Record<SourceTier, DictKey> = {
+  1: 'sim.evidence.tier1',
+  2: 'sim.evidence.tier2',
+  3: 'sim.evidence.tier3',
+  4: 'sim.evidence.tier4',
+}
+
+function trimNumber(n: number): string {
+  const s = n.toFixed(2)
+  return s.includes('.') ? s.replace(/\.?0+$/, '') : s
+}
+
+/**
+ * `preferRange` exists for the label's dosing range, whose `value` is the
+ * midpoint of the range. Printing "30 mg" for a 20–40 mg/day range would invent
+ * a recommendation the label does not make, so the range is shown as a range.
+ */
+function measuredDisplay(m: Measured | null, preferRange: boolean): string {
+  const v = view(m, 2)
+  if (preferRange && v.range) {
+    return `${trimNumber(v.range[0])}–${trimNumber(v.range[1])}${v.unit ? ` ${v.unit}` : ''}`
+  }
+  return v.display
+}
+
+function measuredItem(id: string, label: string, m: Measured | null, preferRange = false): EvidenceItem {
+  const v = view(m, 2)
+  return {
+    id,
+    label,
+    display: measuredDisplay(m, preferRange),
+    status: v.status,
+    source: v.provenance.source ?? null,
+    quote: v.quote,
+    url: v.url,
+    tier: v.tier,
+    note: v.provenance.note ?? null,
+    retrieved: v.provenance.retrieved ?? null,
+  }
+}
+
+export function provenanceItem(id: string, label: string, p: Provenance, display = ''): EvidenceItem {
+  return {
+    id,
+    label,
+    display,
+    status: p.status,
+    source: p.source ?? null,
+    quote: p.quote ?? null,
+    url: p.url ?? null,
+    tier: p.tier ?? null,
+    note: p.note ?? null,
+    retrieved: p.retrieved ?? null,
+  }
+}
+
+function pick(obj: Record<string, unknown> | undefined, key: string): Measured | null {
+  const v = obj?.[key]
+  return isMeasured(v) ? v : null
+}
+
+function substanceGroups(data: PilSimData | null, id: DrugId) {
+  const s = data ? findSubstance(data, id) : undefined
+  const pd = s?.pd as Record<string, unknown> | undefined
+  return {
+    found: !!s,
+    pk: s?.pk as Record<string, unknown> | undefined,
+    effect: pd?.clinical_effect as Record<string, unknown> | undefined,
+    dosing: s?.dosing as Record<string, unknown> | undefined,
+  }
+}
+
+/**
+ * The three dosing numbers a prescriber checks first, all of them label-cited
+ * with the label's own sentence attached. This is the fastest possible audit of
+ * a recommended dose: read our milligrams, read the label's, compare.
+ */
+const DOSE_PARAMS: { field: string; labelKey: DictKey; preferRange?: boolean }[] = [
+  { field: 'typical_adult_start_mg', labelKey: 'sim.evidence.doseStart' },
+  { field: 'typical_adult_range_mg', labelKey: 'sim.evidence.doseUsual', preferRange: true },
+  { field: 'max_daily_mg', labelKey: 'sim.evidence.doseMax' },
+]
+
+/**
+ * The ten parameters every drug in this product is described by — the six that
+ * drive its concentration curve and the four that drive its effect. Chosen
+ * because they are what the engine actually consumes (see the mirror table in
+ * src/engine/substanceParams.ts) rather than because they look well sourced:
+ * across the six molecules these ten include NOT_FOUND and ESTIMATED entries,
+ * and showing them is the point.
+ */
+const HEADLINE_PARAMS: { field: string; from: 'pk' | 'effect'; labelKey: DictKey }[] = [
+  { from: 'pk', field: 'bioavailability_fraction', labelKey: 'sim.evidence.paramF' },
+  { from: 'pk', field: 'tmax_h', labelKey: 'sim.evidence.paramTmax' },
+  { from: 'pk', field: 'half_life_h', labelKey: 'sim.evidence.paramHalfLife' },
+  { from: 'pk', field: 'vd_l', labelKey: 'sim.evidence.paramVd' },
+  { from: 'pk', field: 'clearance_l_h', labelKey: 'sim.evidence.paramClearance' },
+  { from: 'pk', field: 'fraction_excreted_unchanged_urine', labelKey: 'sim.evidence.paramRenal' },
+  { from: 'effect', field: 'sbp_drop_mmhg', labelKey: 'sim.evidence.paramSbpDrop' },
+  { from: 'effect', field: 'dbp_drop_mmhg', labelKey: 'sim.evidence.paramDbpDrop' },
+  { from: 'effect', field: 'onset_h', labelKey: 'sim.evidence.paramOnset' },
+  { from: 'effect', field: 'duration_h', labelKey: 'sim.evidence.paramDuration' },
+]
+
+export function doseEvidence(data: PilSimData | null, id: DrugId, t: ReturnType<typeof useT>): EvidenceItem[] {
+  const g = substanceGroups(data, id)
+  if (!g.found) return []
+  return DOSE_PARAMS.map((p) =>
+    measuredItem(`${id}.${p.field}`, t(p.labelKey), pick(g.dosing, p.field), !!p.preferRange),
+  )
+}
+
+export function drugParamEvidence(data: PilSimData | null, id: DrugId, t: ReturnType<typeof useT>): EvidenceItem[] {
+  const g = substanceGroups(data, id)
+  if (!g.found) return []
+  return HEADLINE_PARAMS.map((p) =>
+    measuredItem(`${id}.${p.field}`, t(p.labelKey), pick(p.from === 'pk' ? g.pk : g.effect, p.field)),
+  )
+}
+
+/**
+ * What the projected blood-pressure change rests on.
+ *
+ * Transcribed from the engine's own provenance — src/engine/constants.ts §4.1,
+ * §4.4 and §4.5(a), and src/engine/homeostasis.ts — which name their sources in
+ * the same file as the constants they justify. Two of these four are cited
+ * anchors and two are estimates, and a reader is told which is which: the
+ * dose–response curve and the pre-treatment-pressure term come from published
+ * trials, while the pooling ceiling and the homeostasis gains are calibrations.
+ *
+ * Source strings, quotes, PMIDs and trial names are rendered verbatim in every
+ * language for the same reason the data layer's are: a translated citation
+ * cannot be looked up.
+ */
+const LAW_2003 =
+  'Law MR, Wald NJ, Morris JK, Jordan RE. Value of low dose combination treatment with blood pressure ' +
+  'lowering drugs: analysis of 354 randomised trials. BMJ 2003;326:1427'
+const LAW_2003_URL = 'https://pmc.ncbi.nlm.nih.gov/articles/PMC162261/'
+
+export function modelBasisEvidence(t: ReturnType<typeof useT>, combination: boolean): EvidenceItem[] {
+  const items: EvidenceItem[] = [
+    {
+      id: 'model.doseResponse',
+      label: t('sim.evidence.modelDoseResponse'),
+      display: '',
+      status: 'CITED',
+      source: LAW_2003,
+      url: LAW_2003_URL,
+      quote: null,
+      tier: 2,
+      note:
+        'Emax and ED50 for each drug class are a least-squares fit to the three dose points this paper ' +
+        'publishes (half, one and two times the standard dose), RMSE ≤ 0.15 mmHg. The trial data are the ' +
+        "paper's; the fitted curve is ours. Emax is a curve-fit asymptote, not a physiological maximum.",
+      retrieved: null,
+      noteIsEssential: true,
+    },
+    {
+      id: 'model.baseline',
+      label: t('sim.evidence.modelBaseline'),
+      display: '',
+      status: 'CITED',
+      source: LAW_2003,
+      url: LAW_2003_URL,
+      quote:
+        'If the pretreatment blood pressure was 10 mm Hg higher, the reduction in blood pressure with one ' +
+        'drug at standard dose increased on average by 1.0 (0.7 to 1.2) mm Hg systolic and 1.1 (0.8 to 1.4) ' +
+        'mm Hg diastolic.',
+      tier: 2,
+      note:
+        'The engine applies 1.3 mmHg per 10 mmHg (1.0–1.5), from the 2025 meta-analysis of 484 randomised ' +
+        "trials and 104 176 participants (PMID 40885583), which sits inside Law 2003's own upper confidence " +
+        'limit and is the better-powered estimate. Without this term a normotensive subject would be given ' +
+        'the full hypertensive response.',
+      retrieved: null,
+      noteIsEssential: true,
+    },
+  ]
+  if (combination) {
+    items.push({
+      id: 'model.pooling',
+      label: t('sim.evidence.modelPooling'),
+      display: '',
+      status: 'ESTIMATED',
+      source: null,
+      url: null,
+      quote: null,
+      tier: null,
+      note:
+        'The ceiling that stops two drugs being strictly additive has no source of its own. It is calibrated ' +
+        'so that a cross-class pair reproduces the observed/expected additivity ratio of 1.01 (95 % CI ' +
+        '0.90–1.12) reported by Wald 2009, and so that an ACE inhibitor plus an ARB reproduces the ONTARGET ' +
+        'dual-blockade increment. It is the least evidence-backed constant in the engine and it is the one ' +
+        'that decides the dual-RAAS answer.',
+      retrieved: null,
+      noteIsEssential: true,
+    })
+  }
+  items.push({
+    id: 'model.homeostasis',
+    label: t('sim.evidence.modelHomeostasis'),
+    display: '',
+    status: 'ESTIMATED',
+    source: null,
+    url: null,
+    quote: null,
+    tier: null,
+    note:
+      'The six-state cardiovascular model (baroreflex, renin, aldosterone, volume, resistance, rate) has no ' +
+      "external source for its gains. Each pathway gain is solved until the model's converged systolic change " +
+      'equals the dose–response value above, so the model reproduces that trial anchor rather than adding to it.',
+    retrieved: null,
+    noteIsEssential: true,
+  })
+  return items
+}
+
+// --------------------------------------------------------------- rendering
+
+/**
+ * CITED / ESTIMATED / NOT FOUND, in the dataset's own words. Deliberately not
+ * translated: this is a data value, not chrome, and it must read identically to
+ * what a reader would find in the file.
+ */
+export function ProvenanceMark({ status }: { status: ProvenanceStatus }) {
+  return <span className={`sim-prov sim-prov-${status.toLowerCase()}`}>{status.replace(/_/g, ' ')}</span>
+}
+
+/** The at-a-glance answer to "how much of this is sourced?" */
+export function EvidenceCountPills({ counts }: { counts: EvidenceCounts }) {
+  return (
+    <span className="sim-prov-counts">
+      {counts.cited > 0 && <span className="sim-prov sim-prov-cited">{counts.cited} CITED</span>}
+      {counts.estimated > 0 && <span className="sim-prov sim-prov-estimated">{counts.estimated} ESTIMATED</span>}
+      {counts.notFound > 0 && <span className="sim-prov sim-prov-not_found">{counts.notFound} NOT FOUND</span>}
+    </span>
+  )
+}
+
+/** The source's own words, its tier, its link — and, when there are none, that. */
+function EvidenceBody({ item }: { item: EvidenceItem }) {
+  const t = useT()
+  return (
+    <>
+      {item.quote ? (
+        <blockquote
+          className={`sim-evi-quote${item.status === 'ESTIMATED' ? ' sim-evi-quote-estimated' : ''}`}
+          lang="en"
+        >
+          “{item.quote}”
+        </blockquote>
+      ) : (
+        <p className="sim-evi-absent">
+          {item.status === 'NOT_FOUND' ? t('sim.evidence.notSourced') : t('sim.evidence.noQuote')}
+        </p>
+      )}
+      {item.note && (item.noteIsEssential || !item.quote || item.status !== 'CITED') && (
+        <p className="sim-evi-note" lang="en">
+          {item.note}
+        </p>
+      )}
+      {(item.source || item.tier) && (
+        <p className="sim-evi-src" lang="en">
+          {item.source}
+          {item.tier && <span className="sim-evi-tier">{t(TIER_LABEL_KEY[item.tier])}</span>}
+          {item.retrieved && <em> · retrieved {item.retrieved}</em>}
+        </p>
+      )}
+      {item.url && (
+        <a className="sim-evi-link" href={item.url} target="_blank" rel="noreferrer noopener">
+          {t('sim.evidence.openSource')} ↗
+        </a>
+      )}
+    </>
+  )
+}
+
+/**
+ * One value inside an opened group: its own mark, value and source text.
+ *
+ * `hideHead` is set when the disclosure holds a single item, whose mark, label
+ * and value are already on the summary line above — repeating them there and
+ * again here would push the quote, the only thing worth reading, further down.
+ */
+function EvidenceQuote({ item, hideHead }: { item: EvidenceItem; hideHead?: boolean }) {
+  return (
+    <div className="sim-evi-q">
+      {!hideHead && (
+        <div className="sim-evi-qhead">
+          <ProvenanceMark status={item.status} />
+          <span className="sim-evi-label">{item.label}</span>
+          {item.display && (
+            <span className="sim-evi-value sim-num" lang="en">
+              {item.display}
+            </span>
+          )}
+        </div>
+      )}
+      <EvidenceBody item={item} />
+    </div>
+  )
+}
+
+/**
+ * A claim, its provenance mark, and the source text one click below it.
+ *
+ * Collapsed by default and one line tall: a wall of citations is as unreadable
+ * as none. What stays visible is the part a sceptical reader scans — is this
+ * cited or estimated, and by whom.
+ */
+export function EvidenceDisclosure({
+  title,
+  meta,
+  source,
+  items,
+  className,
+}: {
+  title: ReactNode
+  meta?: ReactNode
+  source?: string
+  items: EvidenceItem[]
+  className?: string
+}) {
+  if (!items.length) return null
+  const counts = countEvidence(items)
+  return (
+    <details className={`sim-evi${className ? ` ${className}` : ''}`}>
+      <summary>
+        <span className="sim-evi-sum">
+          {items.length === 1 ? <ProvenanceMark status={items[0].status} /> : <EvidenceCountPills counts={counts} />}
+          <span className="sim-evi-label">{title}</span>
+          {meta != null && <span className="sim-evi-meta">{meta}</span>}
+          {source && (
+            <span className="sim-evi-source-line" lang="en">
+              {source}
+            </span>
+          )}
+        </span>
+      </summary>
+      <div className="sim-evi-body">
+        {items.map((it) => (
+          <EvidenceQuote key={it.id} item={it} hideHead={items.length === 1} />
+        ))}
+      </div>
+    </details>
+  )
+}
+
+export function EvidenceRow({ item }: { item: EvidenceItem }) {
+  return (
+    <EvidenceDisclosure
+      title={item.label}
+      meta={
+        item.display ? (
+          <span className="sim-num" lang="en">
+            {item.display}
+          </span>
+        ) : undefined
+      }
+      source={item.source ?? undefined}
+      items={[item]}
+    />
+  )
+}
+
+/**
+ * A rule's, a refusal's or a timing claim's citation — the same disclosure, so
+ * a reader learns the interaction once. Replaces a `title=` tooltip, which is
+ * unreachable on touch and invisible to anyone who does not hover.
+ */
+export function CitationDisclosure({ citation, label }: { citation?: Provenance; label?: string }) {
+  const t = useT()
+  if (!citation) return null
+  // A provenance object with nothing in it is still a fact worth printing —
+  // "ESTIMATED, no source" is information. It just has nothing to disclose.
+  if (!citation.source && !citation.quote && !citation.note && !citation.url) {
+    return (
+      <span className="sim-cite">
+        <ProvenanceMark status={citation.status} />
+      </span>
+    )
+  }
+  const item = provenanceItem('citation', label ?? t('sim.evidence.sourceLabel'), citation)
+  return (
+    <EvidenceDisclosure
+      className="sim-evi-inline"
+      title={item.label}
+      source={item.source ?? undefined}
+      items={[item]}
+    />
+  )
+}
+
+/**
+ * The summary affordance: for the result in front of the reader, how much of it
+ * is cited and how much is estimated — then every one of those values, with the
+ * source's own sentence, behind a single disclosure.
+ *
+ * The counts are over VALUES: the label dosing behind the recommended dose, the
+ * ten headline parameters of each drug in it, and the model terms behind the
+ * projected pressure change. Fired safety rules are counted separately and
+ * named as rules, because a rule is a claim with a citation, not a value.
+ */
+function EvidenceLedger({
+  run,
+  data,
+  ruleCount,
+}: {
+  run: CompletedRun
+  data: PilSimData | null
+  ruleCount: number
+}) {
+  const t = useT()
+  const drugs = drugsIn(run)
+  const doseGroups = drugs.map((id) => ({ id, items: doseEvidence(data, id, t) }))
+  const paramGroups = drugs.map((id) => ({ id, items: drugParamEvidence(data, id, t) }))
+  const model = modelBasisEvidence(t, drugs.length > 1)
+  const params = paramGroups.flatMap((g) => g.items)
+  const all = [...doseGroups.flatMap((g) => g.items), ...params, ...model]
+  const counts = countEvidence(all)
+  // No dataset in context means no provenance to show. Rendering an empty
+  // ledger would read as "nothing is sourced", which is the opposite of true.
+  if (!doseGroups.some((g) => g.items.length)) return null
+
+  return (
+    <section className="sim-evidence" aria-label={t('sim.evidence.aria')}>
+      <p className="sim-evidence-heading">{t('sim.evidence.heading')}</p>
+      <div className="sim-evidence-lede">
+        <EvidenceCountPills counts={counts} />
+        <span className="sim-evidence-sentence">
+          {t('sim.evidence.restsOn', { cited: counts.cited, estimated: counts.estimated })}
+          {counts.notFound > 0 ? ` ${t('sim.evidence.notFoundClause', { n: counts.notFound })}` : ''}
+          {ruleCount > 0 ? ` ${t('sim.evidence.rulesClause', { n: ruleCount })}` : ''}
+        </span>
+      </div>
+
+      <div className="sim-evi-list">
+        {/* The recommended dose, against the label that licenses it. */}
+        {doseGroups.map((g) => {
+          const dose = run.regimen.doses.find((d) => d.substanceId === g.id)
+          const perDay = dose && dose.perDay > 1 ? ` × ${dose.perDay}` : ''
+          return (
+            <EvidenceDisclosure
+              key={g.id}
+              title={
+                <span lang="en">
+                  {DRUG_LABEL[g.id] ?? g.id} {dose ? `${dose.mg} mg${perDay}` : ''}
+                </span>
+              }
+              meta={t('sim.evidence.doseAgainstLabel')}
+              items={g.items}
+            />
+          )
+        })}
+
+        {/* The headline figure, and the four things it is built from. */}
+        <EvidenceDisclosure
+          title={t('sim.evidence.bpHeading')}
+          meta={
+            <span className="sim-num" lang="en">
+              {signedBp(run.summary.deltaSbp)} mmHg
+            </span>
+          }
+          items={model}
+        />
+
+        {/* Everything else, opened deliberately rather than shown by default. */}
+        <details className="sim-evi sim-evi-all">
+          <summary>
+            <span className="sim-evi-sum">
+              <EvidenceCountPills counts={countEvidence(params)} />
+              <span className="sim-evi-label">{t('sim.evidence.showAll')}</span>
+            </span>
+          </summary>
+          <div className="sim-evi-body">
+            {paramGroups.map((g) => (
+              <div key={g.id}>
+                <h6 className="sim-evi-drug" lang="en">
+                  {DRUG_LABEL[g.id] ?? g.id}
+                </h6>
+                {g.items.map((it) => (
+                  <EvidenceRow key={it.id} item={it} />
+                ))}
+              </div>
+            ))}
+          </div>
+        </details>
+      </div>
+    </section>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -91,13 +661,13 @@ const TIMING_TIME_LABEL_KEY: Record<DoseTimeOfDay, DictKey> = {
   any_consistent_time: 'sim.timing.timeAnyConsistent',
 }
 
-function TimingCitation({ citation }: { citation?: { source?: string; quote?: string; note?: string } }) {
-  if (!citation?.source) return null
-  return (
-    <span className="sim-cite" title={citation.quote ?? citation.note ?? ''}>
-      {citation.source}
-    </span>
-  )
+/**
+ * Timing citations are full `Provenance` objects, so they get the same
+ * disclosure as every other claim on the page — the label's sentence one click
+ * away rather than in a `title=` tooltip nobody on a tablet can reach.
+ */
+function TimingCitation({ citation }: { citation?: Provenance }) {
+  return <CitationDisclosure citation={citation} />
 }
 
 function TimingSection({ timing, t }: { timing: PlanTiming; t: ReturnType<typeof useT> }) {
@@ -352,6 +922,13 @@ export function ReportPanel({
 
           <Outcomes summary={run.summary} t={t} />
 
+          {/* Directly under the four figures, because this is where a reader
+              decides whether to believe them: how much of this result is cited
+              and how much estimated, the recommended dose against the label
+              that licenses it, and the trial the projected pressure change is
+              fitted to — each opening onto the source's own words. */}
+          <EvidenceLedger run={run} data={pilsimData} ruleCount={hits.length} />
+
           {searchSpaceNote && (
             <p className="sim-searchspace">
               <span>{t('sim.common.comparisonSet')}</span> {searchSpaceNote}
@@ -377,11 +954,10 @@ export function ReportPanel({
                     <strong>{h.title}</strong>
                     <p className="sim-prose">{h.mechanism}</p>
                     {h.warningText && <p className="sim-prose sim-why-warning">{h.warningText}</p>}
-                    {h.citation?.source && (
-                      <span className="sim-cite" title={h.citation.quote ?? h.citation.note ?? ''}>
-                        {h.citation.source}
-                      </span>
-                    )}
+                    {/* Every one of the 48 rules carries a source AND its
+                        verbatim sentence. Showing the sentence is what lets a
+                        reader check a fired rule against the label itself. */}
+                    <CitationDisclosure citation={h.citation} />
                   </div>
                 </li>
               ))}

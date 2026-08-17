@@ -212,49 +212,90 @@
   scroll-margin-top: var(--sp-4);
 }
 
-/* The scene view continues in the centre column at full width — §4: a reader
-   who has scrolled this far to study the organs wants them large. Same panel,
-   same scene selection as the rail, more room. */
+/* The body, at full column width, and now the ONLY copy of it on this page —
+   §4: a reader who has scrolled this far to study the organs wants them large.
+
+   Width alone does not make a figure large. The scene SVG is
+   `preserveAspectRatio="xMidYMid meet"` inside a stage whose only height is the
+   300px floor `.pil-scene-stage` sets, so a wider column with an unchanged
+   height does not grow the body — it pillar-boxes it, and the figure ends up
+   marooned in the middle of a very wide white box with the width doing nothing.
+   Giving the stage a viewport-derived height is what actually spends the space
+   the rail gave back: the figure meets the taller box, and every readout drawn
+   on it scales with it. Floored well above the 300px it had, capped so it still
+   leaves the evidence below it visible on a laptop. */
 .sim-scene-wide > .sim-scene { padding: var(--sp-5); }
+/* Only the two figures that actually FILL a taller box are given one: the live
+   scene's stage and the static anatomy, both of which are flex containers with a
+   stretch child. `.sim-organs` (the OrganPanel fallback) lays out as a block and
+   would answer a min-height with blank space, so it keeps its content height. */
+.sim-scene-wide .pil-scene-stage,
+.sim-scene-wide .pil-anatomy-rail {
+  min-height: clamp(360px, 62vh, 680px);
+}
 
 /* ---------------------------------------------------------------- layout */
 
-/* THREE ZONES, and only three, the same on every page of the product: the app's
-   navigation rail on the left, ONE content column in the centre, the anatomy
-   rail on the right. Inside the column every panel takes the full width and
-   they stack, one per row. Reading a page is a single downward movement;
-   scanning left and right between separate cards is what exhausts a reader,
-   and it is why the 340px control sidebar that used to live here is gone.
+/* TWO ZONES ON THIS PAGE: the app's navigation on the left, ONE content column
+   for everything else. There is no right rail here, and the blueprint carries
+   the amendment that says so.
 
-   The GRID ITSELF is the shell's — `.page-split`, `.page-col` and `.rail` in
-   src/ui/shell/styles.css, shared with Substances, Pills and Test subjects, so
-   a user learns the layout once. This file only adds what this view needs on
-   top: the two container-query scopes, and a rail that sizes to its figure. */
+   WHY THE RAIL WENT. It held the anatomy scene; the Evidence zone held the same
+   scene again, at full column width — same tab strip, same title, same figure,
+   same caption. The rail's copy was a small, illegible clone of the centre one,
+   so it added nothing and took 420–520px of the width away from the charts, the
+   ranking, the plan and the body, which is what a reader actually came here for.
+   The owner's call: keep the large one, drop the rail.
+
+   Substances, Pills and Test subjects still use the shell's `.page-split` /
+   `.page-col` / `.rail` grid untouched — there the anatomy is the only copy and
+   is the page's headline result. Only this page opts out, and it opts out by not
+   wearing those classes at all rather than by overriding them, so nothing here
+   can leave the shared grid with an empty track standing in it.
+
+   THE WIDTH. The band the page occupies is unchanged: 940px of centre plus a
+   gap plus a 420–520px rail is ~1480px, and that is what the column takes now.
+   Nothing on this page got narrower, and it stays LEFT-ALIGNED against the nav,
+   so every zone heading is exactly where the eye already learned to find it.
+   The cap matters — an uncapped column on a 27" monitor is not "using" the
+   space, it is a 2000px line of cards. Prose inside is capped at `--measure`
+   independently, as it was before. */
+.sim-shell {
+  display: block;
+  min-width: 0;
+}
 .sim-column {
   container: sim-main / inline-size;
   display: flex; flex-direction: column; gap: var(--sp-5);
+  min-width: 0;
+  max-width: 1480px;
 }
-.sim-rail {
-  container: sim-side / inline-size;
-  /* The shell's `.rail` pins a full-viewport height for a figure that fills its
-     container. The live organ figure sizes to its own content instead, so the
-     rail follows it and only scrolls if it outgrows the viewport. */
-  height: auto;
-  max-height: calc(100vh - var(--gap-group, 16px) * 2);
-  overflow: auto;
-}
-@media (max-width: 1240px) { .sim-rail { max-height: none; overflow: visible; } }
 
 /* Cards own the full column now, so they can afford to breathe. */
 .sim-column > .sim-card { padding: var(--sp-5); }
 
+/* WHAT ACTUALLY GETS THE FREED WIDTH. Stretching everything is not using the
+   space; it is the same page with longer lines. The figures take it — the
+   charts are `width: 100%` over a fixed viewBox, so a wider column draws them
+   bigger, axis labels and all, and the body gets a real height to grow into
+   (`.sim-scene-wide`, further up). The tables take it. Prose does not: every
+   paragraph on this page is already held at `--measure`, and this adds the one
+   that was not (a demonstration's claim, which sits in a full-width card).
+   Controls do not either — a select or an arm list stretched across 1480px is
+   harder to aim at, not easier. The CARD stays full width in every case; one
+   card per row is the layout law and none of this touches it. */
+.sim-demo-body { max-width: var(--measure, 68ch); }
+.sim-controls .sim-field select,
+.sim-controls .rc-arms,
+.sim-controls .rc-lib { max-width: 760px; }
+
 /* Every grid inside a zone responds to the width of its own zone rather than to
    the width of the window: the column is the window less the app's navigation
-   rail, less this view's padding, and — above 1240px — less the anatomy rail
-   too. A viewport media query fires hundreds of pixels after the content has
-   already been crushed, which is how a five-column row ends up overprinting
-   itself on a perfectly wide screen. The container NAMES are unchanged
-   (`sim-main`, `sim-side`) so every existing `@container` rule still works. */
+   rail and less this view's padding. A viewport media query fires hundreds of
+   pixels after the content has already been crushed, which is how a five-column
+   row ends up overprinting itself on a perfectly wide screen. The container NAME
+   is unchanged (`sim-main`) so every existing `@container` rule still works —
+   `sim-side` went with the rail that scoped it, and nothing ever queried it. */
 
 /* A caption or a source line that belongs to the panel above it travels with
    that panel instead of floating at full column gap, where it reads as an
@@ -856,7 +897,31 @@
    re-frames one are indistinguishable from the outside, and a reader who
    thinks each scene is its own simulation has been misled about what the
    product computed. */
-.sim-scene { display: flex; flex-direction: column; gap: var(--sp-3); }
+.sim-scene { display: flex; flex-direction: column; gap: var(--sp-3); min-height: 0; }
+/* The head, picker and blurb are chrome and keep their own content height; the
+   figure itself — `.pil-scene` (a live scene), `.sim-organs` (the OrganPanel
+   fallback) or `.pil-anatomy-rail` (the pre-run static view) — is what should
+   claim whatever room the card has left. Without this, `.pil-scene`'s own
+   `height: 100%` had nothing but `auto` to resolve against: the section sat at
+   its content height and the figure fell back to its 300px minimum regardless
+   of how much room was free below it. The height it stretches INTO is set by
+   `.sim-scene-wide` further up; this rule is only what makes it stretch. */
+.sim-scene > .pil-scene,
+.sim-scene > .sim-organs,
+.sim-scene > .pil-anatomy-rail {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* A live scene draws its own tab strip and its own blurb, and both are exact
+   duplicates of chrome ScenePanel already drew a moment earlier — same scene
+   list, same click target; same sentence, word for word. Hiding them leaves
+   exactly ONE scene selector on the page, `.sim-scene-picker`, which is the one
+   the panel labels and the one the AI's "watch this scene" hand-off drives.
+   The clock/status line and the scene title stay — nothing else states those. */
+.sim-scene .pil-scene-tabs,
+.sim-scene .pil-scene-caption > .pil-scene-blurb {
+  display: none;
+}
 .sim-scene-head { display: flex; flex-direction: column; gap: 2px; }
 .sim-scene-head .sim-card-title { margin-bottom: 0; }
 .sim-scene-note,

@@ -12,4 +12,5 @@ worker/node_modules/
 
 # Never commit secrets
 .env
+!.env.production
 .env.*

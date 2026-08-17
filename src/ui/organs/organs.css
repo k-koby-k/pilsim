@@ -211,13 +211,16 @@
 .pil-callout-title {
   fill: var(--text);
   font-family: var(--font-ui);
-  font-size: 14px;
+  /* Mirrors TYPE.calloutTitle in primitives.tsx — layoutLane() reserves space from that
+     constant, so the two must move together or labels start overlapping again. */
+  font-size: 16px;
   font-weight: 650;
 }
 .pil-callout-line {
   fill: var(--text-dim);
   font-family: var(--font-mono);
-  font-size: 11px;
+  /* Mirrors TYPE.calloutLine — see .pil-callout-title. */
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
 }
 .pil-leader {
@@ -867,7 +870,9 @@ p.pil-warn-text { color: var(--bad); fill: none }
 }
 .aa-list-row {
   display: block;
-  font-size: var(--fs-xs);
+  /* This is the mechanism sentence itself, not a chrome label — floor is --fs-sm like
+     the rest of the product's real sentences, not --fs-xs. */
+  font-size: var(--fs-sm);
   line-height: 1.45;
 }
 .aa-list-where {

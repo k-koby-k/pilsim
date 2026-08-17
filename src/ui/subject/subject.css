@@ -33,7 +33,7 @@
    scales to fill it. */
 .subj-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 420px);
+  grid-template-columns: minmax(0, 1fr) clamp(420px, 30vw, 520px);
   gap: var(--gap-section);
   align-items: start;
 }

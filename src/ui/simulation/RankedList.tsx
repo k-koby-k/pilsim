@@ -24,28 +24,36 @@
  * hydrochlorothiazide, because the data does not exist.
  */
 
-import type { Provenance } from '../../types'
+import type { DrugId, Provenance } from '../../types'
 import { useT } from '../../i18n'
+import { useData } from '../../data/DataProvider'
 import { CompositeBar } from './charts'
 import { SEVERITY_CLASS } from './presets'
-import { signedBp } from './ReportPanel'
+import { CitationDisclosure, EvidenceDisclosure, doseEvidence, signedBp } from './ReportPanel'
 import type { ScoredOption } from './scoring'
 
+/**
+ * A citation used to be a grey line with the quote hidden in a `title=`
+ * tooltip: unreachable on a tablet, invisible to anyone who does not hover, and
+ * therefore not evidence at all. It is now the same disclosure the report uses
+ * — status mark, source, and the source's own sentence one click below.
+ */
 function Citation({ p }: { p?: Provenance }) {
-  if (!p) return null
-  const label = p.source ?? (p.status === 'ESTIMATED' ? 'ESTIMATED — no source' : p.status)
-  return (
-    <span className="sim-cite" title={p.quote ?? p.note ?? ''}>
-      {p.url ? (
-        <a href={p.url} target="_blank" rel="noreferrer noopener">
-          {label}
-        </a>
-      ) : (
-        label
-      )}
-      {p.retrieved ? <em> · retrieved {p.retrieved}</em> : null}
-    </span>
-  )
+  return <CitationDisclosure citation={p} />
+}
+
+/**
+ * The doses in this arm, each against the label that licenses it.
+ *
+ * Only ever rendered for an arm that is being ranked. §4.1 is explicit that a
+ * DISQUALIFIED arm shows NO numbers, and a labelled dose range is a number.
+ */
+function ArmDoseEvidence({ drugs }: { drugs: DrugId[] }) {
+  const t = useT()
+  const { data } = useData()
+  const items = drugs.flatMap((id) => doseEvidence(data, id, t))
+  if (!items.length) return null
+  return <EvidenceDisclosure className="sim-evi-inline" title={t('sim.evidence.armBasis')} items={items} />
 }
 
 export function RefusalCard({ text, citation }: { text: string; citation?: Provenance }) {
@@ -161,6 +169,13 @@ export function RankedRow({
             )}
           </dl>
         </div>
+      )}
+
+      {/* The label behind the milligrams above, one click from the row that
+          recommends them — a ranked alternative is a prescribing claim, and a
+          reader comparing arms should not have to leave the list to check it. */}
+      {!disqualified && (
+        <ArmDoseEvidence drugs={[...new Set((option.regimen?.doses ?? []).map((d) => d.substanceId))]} />
       )}
 
       {option.refusal && <RefusalCard text={option.refusal.reason} citation={option.refusal.citation} />}

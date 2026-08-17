@@ -168,10 +168,17 @@ export const TEXT_ASCENT = 0.8
 /** Descent below the baseline, as a multiple of font-size. */
 export const TEXT_DESCENT = 0.25
 
-/** Font sizes, mirrored from the type rules in organs.css. */
+/** Font sizes, mirrored from the type rules in organs.css. `calloutTitle`/`calloutLine` —
+ * the margin readouts, i.e. the numbers a reader leans in to read — were bumped from
+ * 14/11 after a clinician reported them too small to read in the rail: the rail draws
+ * this whole figure at a fraction of its native 600 x 720 size, so every SVG-unit font
+ * size here is that same fraction on screen. `labelMain`/`labelSub` (labels printed ON
+ * an organ, at that organ's own small zoom scale) are untouched — there is no lane
+ * layout guarding those against the specific anatomy they sit beside, so growing them is
+ * a separate, more careful pass. */
 export const TYPE = {
-  calloutTitle: 14,
-  calloutLine: 11,
+  calloutTitle: 16,
+  calloutLine: 12.5,
   labelMain: 13,
   labelSub: 11,
   ringLabel: 10.5,
@@ -179,11 +186,11 @@ export const TYPE = {
 } as const
 
 /** Baseline drop from a block's heading to its first value line. */
-export const TITLE_LEAD = 16
+export const TITLE_LEAD = 18
 /** Baseline-to-baseline pitch for stacked lines of one caption block. */
-export const LINE_PITCH = 14
+export const LINE_PITCH = 16
 /** Minimum clear space between two caption blocks that share a lane. */
-export const LANE_GAP = 12
+export const LANE_GAP = 13
 /** Baseline offset of a ring caption below the ring's own edge. */
 export const RING_LABEL_GAP = 13
 

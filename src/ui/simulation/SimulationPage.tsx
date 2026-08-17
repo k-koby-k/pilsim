@@ -4,10 +4,23 @@
  * LAID OUT AGAINST research/10-LAYOUT-BLUEPRINT.md, which is the authority. A
  * component does not choose where it appears; that document does.
  *
- * THE FRAME (§1) is the same on every page of the product: the app's navigation
- * on the left, ONE column of content in the centre (`.page-col`, max 940px), and
- * the anatomy rail on the right (`.rail`, 360–420px). Cards in the centre stack
- * one per row, full width, never two across.
+ * THE FRAME (§1): the app's navigation on the left, ONE column of content in the
+ * centre. Cards in the centre stack one per row, full width, never two across.
+ *
+ * THIS PAGE HAS NO RIGHT RAIL, and that is deliberate — see the blueprint's
+ * amendment to §1/§4. The rail here used to hold the anatomy scene, and the
+ * Evidence zone held the SAME scene again at full column width: the same tab
+ * strip, the same title, the same figure, the same caption. Two copies of one
+ * instrument, the rail's copy too small to read. The product owner's call was to
+ * keep the large one and drop the rail outright rather than find the rail
+ * something else to do: the charts, the ranking, the plan and the body are what
+ * the user came for, and they are better served by the width than by a second,
+ * illegible view of one of them. So the centre column takes the whole band the
+ * centre-plus-rail used to occupy (`.sim-column` in simulation.css) — nothing on
+ * this page got narrower, and there is no empty track left behind.
+ *
+ * Substances, Pills and Test subjects keep their rails untouched: there the
+ * anatomy is the ONLY copy, so it is the page's headline result and stays put.
  *
  * THE CENTRE COLUMN IS FOUR ZONES (§2), in this order, always:
  *
@@ -740,8 +753,12 @@ export function SimulationPage({ onNavigate }: { onNavigate?: (p: PageId) => voi
         <h2>{t('nav.simulation')}</h2>
       </header>
 
-      <div className="page-split sim-shell">
-        <div className="page-col sim-column">
+      {/* One column, and only one. `.page-split` / `.page-col` are the shell's
+          centre-plus-rail pair and are deliberately NOT used here: with the rail
+          gone, `.page-split` would leave a 420–520px grid track standing empty
+          and `.page-col` would hold the content at 940px in the middle of it. */}
+      <div className="sim-shell">
+        <div className="sim-column">
           {/* ============================================== ZONE 1 — ACT ===
               What the user came here to do, at the top, containing the primary
               action. Before a run this is the entire page. */}
@@ -941,11 +958,12 @@ export function SimulationPage({ onNavigate }: { onNavigate?: (p: PageId) => voi
               )}
 
               {/* Blueprint §4: the anatomy is a headline result, not decoration.
-                  It lives in the rail so it stays in view, AND it continues
-                  here at full column width, because a reader who has scrolled
-                  this far to study the organs wants them large. Both views
-                  share one scene selection, so they are one instrument in two
-                  places rather than two pickers that can disagree. */}
+                  THE ONLY COPY ON THIS PAGE, at full column width, because a
+                  reader who has scrolled this far to study the organs wants
+                  them large. It keeps its own scene selector (`.sim-scene-picker`
+                  in ScenePanel) — the rail copy that used to mirror this one is
+                  gone, so there is no second picker that could disagree with
+                  this one. */}
               <div className="sim-section sim-scene-wide" id={SEC.body}>
                 <ScenePanel
                   binding={sceneBinding}
@@ -1126,24 +1144,8 @@ export function SimulationPage({ onNavigate }: { onNavigate?: (p: PageId) => voi
             />
           )}
         </div>
-
-        {/* The rail. §4: it always shows the body, it follows the centre
-            column's subject, and it is a headline result rather than
-            decoration — which is why it now gets 360–420px and the figure
-            scales to fill it. */}
-        <aside className="rail sim-rail" aria-label={t('sim.scene.anatomy')}>
-          <ScenePanel
-            binding={sceneBinding}
-            sceneId={sceneId}
-            onScene={setSceneId}
-            frame={runner.latest}
-            history={runner.frames}
-            caption={(latestRun?.regimen ?? regimen)?.label}
-            evaluation={runner.evaluation ?? evaluation}
-            substanceIds={sceneSubstances}
-            live={!!runner.latest}
-          />
-        </aside>
+        {/* No rail. The body is in the Evidence zone above, once, at the size it
+            is worth reading at. */}
       </div>
     </div>
   )

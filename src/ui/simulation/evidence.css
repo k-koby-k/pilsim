@@ -1,0 +1,271 @@
+/* The evidence layer — provenance made visible at the point of the claim.
+
+   Written because a clinician testing the product said, of a recommendation,
+   "I don't know how correct the response is". Every number in this product
+   already traces to a regulatory label, a named trial, or an explicit
+   ESTIMATED marker; none of that was visible where a reader decides whether
+   to believe a result. This file styles the four things that fixes:
+
+     1. a status mark — CITED / ESTIMATED / NOT FOUND, never collapsed into
+        one another, never softened;
+     2. a one-line summary of how much of a result is cited versus estimated;
+     3. a disclosure that opens onto the source's OWN WORDS, which is the only
+        thing a doctor can check us against; and
+     4. a link straight to the document those words came from.
+
+   Colours are not invented here: they alias the shell's severity ladder, the
+   same tokens simulation.css uses, so a green here is the same green as a
+   "preferred" chip anywhere else in the app. Nothing in this file touches
+   simulation.css — it is additive, and it is scoped to .sim-evi* / .sim-prov*
+   / .sim-evidence names that exist nowhere else. */
+
+/* ------------------------------------------------------------ status mark */
+
+/* The three states must stay visually distinct — see STATUS_TONE in
+   src/data/provenance.ts, which says exactly that. NOT FOUND is deliberately
+   the quietest AND the only dashed one: an absence should read as an absence,
+   not as a fourth kind of source. */
+.sim-prov {
+  display: inline-block;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill, 999px);
+  border: 1px solid;
+  font-variant-numeric: tabular-nums;
+}
+.sim-prov-cited {
+  color: var(--sev-preferred-fg, #17734a);
+  background: var(--sev-preferred-wash, #e8f6ee);
+  border-color: var(--sev-preferred-line, #bfe3ce);
+}
+.sim-prov-estimated {
+  color: var(--sev-minor-fg, #8a6410);
+  background: var(--sev-minor-wash, #fdf5e3);
+  border-color: var(--sev-minor-line, #ecdcb4);
+}
+.sim-prov-not_found {
+  color: var(--sev-info-fg, #5a6774);
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--sev-info-line, #dde2e9);
+}
+
+.sim-prov-counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+/* ------------------------------------------------------ the summary block */
+
+.sim-evidence {
+  margin: var(--sp-4, 20px) 0 0;
+  padding: var(--sp-3, 14px) var(--sp-4, 20px);
+  border: 1px solid var(--line, #e3e7ee);
+  border-radius: var(--radius, 8px);
+  background: var(--surface-1, #fff);
+}
+
+.sim-evidence-lede {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2, 8px) var(--sp-3, 14px);
+  margin: 0;
+}
+.sim-evidence-sentence {
+  flex: 1 1 24ch;
+  font-size: var(--fs-sm, 13.5px);
+  color: var(--text-dim, #55606d);
+  max-width: var(--measure, 68ch);
+  line-height: 1.5;
+}
+.sim-evidence-heading {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint, #8a95a3);
+  width: 100%;
+  margin: 0 0 var(--sp-2, 8px);
+}
+
+.sim-evi-list {
+  margin-top: var(--sp-3, 14px);
+  border-top: 1px solid var(--line, #e3e7ee);
+}
+
+/* ------------------------------------------------------------- disclosure */
+
+/* Native <details>: one click reaches the quote, it survives server
+   rendering, and it needs no state — which is also why it cannot get out of
+   sync with the run it describes. */
+.sim-evi {
+  border-bottom: 1px solid var(--line, #e3e7ee);
+  font-size: var(--fs-sm, 13.5px);
+}
+.sim-evi > summary {
+  padding: var(--sp-2, 8px) 0;
+  cursor: pointer;
+  list-style: none;
+}
+/* The disclosure triangle is drawn rather than inherited: a <summary> laid out
+   as a flex container loses its native marker in Chrome, and the marker IS the
+   affordance that says the source text is one click away. */
+.sim-evi > summary::-webkit-details-marker {
+  display: none;
+}
+.sim-evi-sum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2, 8px);
+}
+.sim-evi-sum::before {
+  content: '▸';
+  color: var(--text-faint, #8a95a3);
+  font-size: var(--fs-xs, 12px);
+}
+.sim-evi[open] > summary .sim-evi-sum::before {
+  content: '▾';
+}
+.sim-evi > summary:hover .sim-evi-label {
+  color: var(--accent, #2563a8);
+}
+.sim-evi[open] > summary {
+  border-bottom: 1px dashed var(--line, #e3e7ee);
+}
+
+.sim-evi-label {
+  font-weight: 600;
+  color: var(--text, #16202c);
+}
+/* The value carries the mono face the rest of the page gives numbers, so a
+   figure here lines up with the same figure in a table above it. */
+.sim-evi-value {
+  color: var(--text, #16202c);
+  font-weight: 600;
+}
+/* The source name. Never translated — a translated source cannot be looked
+   up. Clipped on one line when collapsed; in full once opened. */
+.sim-evi-source-line {
+  flex: 1 1 20ch;
+  min-width: 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-faint, #8a95a3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sim-evi[open] > summary .sim-evi-source-line {
+  white-space: normal;
+  overflow: visible;
+}
+.sim-evi-meta {
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-dim, #55606d);
+}
+
+.sim-evi-body {
+  padding: var(--sp-2, 8px) 0 var(--sp-3, 14px);
+}
+.sim-evi-q + .sim-evi-q {
+  margin-top: var(--sp-3, 14px);
+  padding-top: var(--sp-3, 14px);
+  border-top: 1px dotted var(--line, #e3e7ee);
+}
+.sim-evi-qhead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2, 8px);
+  margin-bottom: var(--sp-2, 8px);
+}
+
+/* THE point of the whole file. The label's own sentence, verbatim, in a
+   material that says "this is not our prose". Left rule rather than italics
+   because these quotes contain numbers and units that must stay legible. */
+.sim-evi-quote {
+  margin: 0;
+  padding: var(--sp-2, 8px) 0 var(--sp-2, 8px) var(--sp-3, 14px);
+  border-left: 3px solid var(--sev-preferred-line, #bfe3ce);
+  color: var(--text, #16202c);
+  font-size: var(--fs-sm, 13.5px);
+  line-height: 1.55;
+  max-width: var(--measure, 68ch);
+}
+.sim-evi-quote-estimated {
+  border-left-color: var(--sev-minor-line, #ecdcb4);
+}
+/* An absence gets a box that reads as empty, not as content. */
+.sim-evi-absent {
+  margin: 0;
+  padding: var(--sp-2, 8px) 0 var(--sp-2, 8px) var(--sp-3, 14px);
+  border-left: 3px dashed var(--sev-info-line, #dde2e9);
+  color: var(--text-dim, #55606d);
+  font-size: var(--fs-sm, 13.5px);
+  max-width: var(--measure, 68ch);
+}
+
+.sim-evi-note {
+  margin: var(--sp-2, 8px) 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-dim, #55606d);
+  line-height: 1.5;
+  max-width: var(--measure, 68ch);
+}
+.sim-evi-src {
+  margin: var(--sp-2, 8px) 0 0;
+  font-size: var(--fs-xs, 12px);
+  color: var(--text-faint, #8a95a3);
+  max-width: var(--measure, 68ch);
+  line-height: 1.5;
+}
+.sim-evi-tier {
+  margin-left: 6px;
+  padding-left: 6px;
+  border-left: 1px solid var(--line, #e3e7ee);
+}
+.sim-evi-link {
+  display: inline-block;
+  margin-top: var(--sp-2, 8px);
+  font-size: var(--fs-xs, 12px);
+  color: var(--accent, #2563a8);
+}
+
+/* --------------------------------------------------- nested / compact use */
+
+/* Inside a rule, a refusal or a ranked row the disclosure is furniture, not a
+   section: no rules above and below, tighter, and it never competes with the
+   warning text it sits under. */
+.sim-evi-inline {
+  border-bottom: 0;
+  margin-top: var(--sp-2, 8px);
+}
+.sim-evi-inline > summary {
+  padding: 2px 0;
+}
+.sim-evi-inline .sim-evi-body {
+  padding-bottom: var(--sp-2, 8px);
+}
+
+/* The full per-drug ledger, opened deliberately. */
+.sim-evi-all > .sim-evi-body {
+  padding-left: var(--sp-3, 14px);
+}
+.sim-evi-drug {
+  margin: var(--sp-3, 14px) 0 0;
+  font-size: var(--fs-xs, 12px);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint, #8a95a3);
+}
+.sim-evi-all .sim-evi:last-child {
+  border-bottom: 0;
+}

@@ -727,6 +727,57 @@ const en = {
   'sim.report.riskPeripheralEdema': 'Peripheral oedema',
   'sim.report.riskCough': 'Cough',
 
+  // ---------------------------------------------------------------- evidence
+  // Chrome for the provenance layer (src/ui/simulation/ReportPanel.tsx). What
+  // is translated here is only the FRAME — what a parameter is called, what a
+  // tier means, how many values are cited. The source names, the verbatim
+  // quotes, the PMIDs, the trial names, the drug names and the units are never
+  // translated and never pass through this file: a translated quote can no
+  // longer be checked against the document it came from, which is the entire
+  // reason it is on screen. CITED / ESTIMATED / NOT FOUND are likewise printed
+  // as the dataset words them, in every language.
+  'sim.evidence.aria': 'Evidence behind this result',
+  'sim.evidence.heading': 'What this result rests on',
+  'sim.evidence.restsOn': (v: Vars) =>
+    `This recommendation rests on ${v.cited} cited values and ${v.estimated} estimates.`,
+  'sim.evidence.notFoundClause': (v: Vars) =>
+    `${v.n} more could not be sourced at all, and are shown blank rather than filled in.`,
+  'sim.evidence.rulesClause': (v: Vars) =>
+    `${v.n} safety rule${v.n === 1 ? '' : 's'} fired, each with its own citation.`,
+  'sim.evidence.doseAgainstLabel': 'Dose, against the label',
+  'sim.evidence.bpHeading': 'Where the projected pressure change comes from',
+  'sim.evidence.showAll': 'Every parameter behind these drugs',
+  'sim.evidence.openSource': 'Open the source',
+  'sim.evidence.noQuote': 'No verbatim text recorded for this value.',
+  'sim.evidence.notSourced': 'Searched; no source located. Left blank rather than filled in.',
+  'sim.evidence.sourceLabel': 'Source',
+  'sim.evidence.tier1': 'Regulatory labeling',
+  'sim.evidence.tier2': 'Peer-reviewed study',
+  'sim.evidence.tier3': 'Chemical / drug database',
+  'sim.evidence.tier4': 'Secondary summary',
+  'sim.evidence.doseStart': 'Label starting dose',
+  'sim.evidence.doseUsual': 'Label usual range',
+  'sim.evidence.doseMax': 'Label maximum per day',
+  'sim.evidence.paramF': 'Oral bioavailability',
+  'sim.evidence.paramTmax': 'Time to peak plasma level',
+  'sim.evidence.paramHalfLife': 'Elimination half-life',
+  'sim.evidence.paramVd': 'Volume of distribution',
+  'sim.evidence.paramClearance': 'Clearance',
+  'sim.evidence.paramRenal': 'Excreted unchanged by the kidney',
+  'sim.evidence.paramSbpDrop': 'Systolic reduction stated by the source',
+  'sim.evidence.paramDbpDrop': 'Diastolic reduction stated by the source',
+  'sim.evidence.paramOnset': 'Onset of effect',
+  'sim.evidence.paramDuration': 'Duration of effect',
+  'sim.evidence.modelDoseResponse': 'Dose–response curve',
+  'sim.evidence.modelBaseline': 'Effect of pre-treatment pressure',
+  'sim.evidence.modelPooling': 'Ceiling on combining two drugs',
+  'sim.evidence.modelHomeostasis': 'Cardiovascular model gains',
+  'sim.evidence.armBasis': 'Doses in this arm, against the label',
+  'sim.evidence.rankingBasis': 'What every row in this list rests on',
+  'sim.evidence.rankingBasisNote':
+    'Every strength listed is a licensed strength from the label. The pressure change on each row is ' +
+    'estimated with the same dose–response model a full simulation uses.',
+
   'sim.scene.anatomy': 'Anatomy',
   'sim.scene.everySceneNote':
     'Every scene reads the same run. Switching one changes the view, never the simulation.',
@@ -2235,6 +2286,48 @@ const uz: Partial<Record<DictKey, DictValue>> = {
   'sim.report.riskHyperuricemiaGout': 'Giperurikemiya / podagra',
   'sim.report.riskPeripheralEdema': 'Periferik shish',
   'sim.report.riskCough': "Yo'tal",
+
+  // ---------------------------------------------------------------- evidence
+  'sim.evidence.aria': 'Bu natija ortidagi dalillar',
+  'sim.evidence.heading': 'Bu natija nimaga asoslanadi',
+  'sim.evidence.restsOn': (v: Vars) =>
+    `Bu tavsiya manbaga havolali ${v.cited} ta qiymat va ${v.estimated} ta taxminga asoslanadi.`,
+  'sim.evidence.notFoundClause': (v: Vars) =>
+    `${v.n} tasiga manba topilmadi va ular to'ldirilmasdan bo'sh ko'rsatilgan.`,
+  'sim.evidence.rulesClause': (v: Vars) => `${v.n} ta xavfsizlik qoidasi ishga tushdi, har biri o'z manbasi bilan.`,
+  'sim.evidence.doseAgainstLabel': 'Doza — rasmiy yorliqqa nisbatan',
+  'sim.evidence.bpHeading': "Bashorat qilingan bosim o'zgarishi qayerdan olingan",
+  'sim.evidence.showAll': 'Bu dorilar ortidagi barcha parametrlar',
+  'sim.evidence.openSource': 'Manbani ochish',
+  'sim.evidence.noQuote': "Bu qiymat uchun manbadan aynan matn yozib olinmagan.",
+  'sim.evidence.notSourced': "Qidirildi; manba topilmadi. To'ldirilmasdan bo'sh qoldirildi.",
+  'sim.evidence.sourceLabel': 'Manba',
+  'sim.evidence.tier1': "Rasmiy dori yorlig'i",
+  'sim.evidence.tier2': "Taqrizdan o'tgan tadqiqot",
+  'sim.evidence.tier3': "Kimyoviy / dori ma'lumotlar bazasi",
+  'sim.evidence.tier4': 'Ikkilamchi manba',
+  'sim.evidence.doseStart': "Yorliqdagi boshlang'ich doza",
+  'sim.evidence.doseUsual': 'Yorliqdagi odatiy oraliq',
+  'sim.evidence.doseMax': 'Yorliqdagi kunlik maksimum',
+  'sim.evidence.paramF': "Peroral bioo'zlashtirish",
+  'sim.evidence.paramTmax': 'Plazmada eng yuqori darajaga yetish vaqti',
+  'sim.evidence.paramHalfLife': 'Yarim chiqarilish davri',
+  'sim.evidence.paramVd': 'Taqsimlanish hajmi',
+  'sim.evidence.paramClearance': 'Klirens',
+  'sim.evidence.paramRenal': "Buyrak orqali o'zgarmagan holda chiqishi",
+  'sim.evidence.paramSbpDrop': "Manbada ko'rsatilgan sistolik pasayish",
+  'sim.evidence.paramDbpDrop': "Manbada ko'rsatilgan diastolik pasayish",
+  'sim.evidence.paramOnset': "Ta'sir boshlanishi",
+  'sim.evidence.paramDuration': "Ta'sir davomiyligi",
+  'sim.evidence.modelDoseResponse': "Doza–javob egri chizig'i",
+  'sim.evidence.modelBaseline': "Davolashdan oldingi bosimning ta'siri",
+  'sim.evidence.modelPooling': 'Ikki dorini birlashtirish chegarasi',
+  'sim.evidence.modelHomeostasis': 'Yurak-qon tomir modeli koeffitsiyentlari',
+  'sim.evidence.armBasis': 'Bu variantdagi dozalar — yorliqqa nisbatan',
+  'sim.evidence.rankingBasis': "Bu ro'yxatdagi har bir qator nimaga asoslanadi",
+  'sim.evidence.rankingBasisNote':
+    "Ro'yxatdagi har bir doza — yorliqda ruxsat etilgan doza. Har bir qatordagi bosim o'zgarishi to'liq " +
+    "simulyatsiya ishlatadigan doza–javob modeli bilan baholanadi.",
 
   'sim.scene.anatomy': 'Anatomiya',
   'sim.scene.everySceneNote':
@@ -3770,6 +3863,48 @@ const ru: Partial<Record<DictKey, DictValue>> = {
   'sim.report.riskHyperuricemiaGout': 'Гиперурикемия / подагра',
   'sim.report.riskPeripheralEdema': 'Периферические отёки',
   'sim.report.riskCough': 'Кашель',
+
+  // ---------------------------------------------------------------- evidence
+  'sim.evidence.aria': 'Доказательная основа этого результата',
+  'sim.evidence.heading': 'На чём основан этот результат',
+  'sim.evidence.restsOn': (v: Vars) =>
+    `Эта рекомендация опирается на ${v.cited} значений с указанным источником и ${v.estimated} оценок.`,
+  'sim.evidence.notFoundClause': (v: Vars) =>
+    `Для ${v.n} источник не найден — они показаны пустыми, а не заполнены.`,
+  'sim.evidence.rulesClause': (v: Vars) => `Сработало правил безопасности: ${v.n}, каждое со своим источником.`,
+  'sim.evidence.doseAgainstLabel': 'Доза — в сравнении с официальной инструкцией',
+  'sim.evidence.bpHeading': 'Откуда взято прогнозируемое изменение давления',
+  'sim.evidence.showAll': 'Все параметры этих препаратов',
+  'sim.evidence.openSource': 'Открыть источник',
+  'sim.evidence.noQuote': 'Для этого значения дословный текст источника не записан.',
+  'sim.evidence.notSourced': 'Поиск проведён, источник не найден. Оставлено пустым, а не заполнено.',
+  'sim.evidence.sourceLabel': 'Источник',
+  'sim.evidence.tier1': 'Официальная инструкция к препарату',
+  'sim.evidence.tier2': 'Рецензируемое исследование',
+  'sim.evidence.tier3': 'Химическая / лекарственная база данных',
+  'sim.evidence.tier4': 'Вторичный обзор',
+  'sim.evidence.doseStart': 'Начальная доза по инструкции',
+  'sim.evidence.doseUsual': 'Обычный диапазон по инструкции',
+  'sim.evidence.doseMax': 'Максимум в сутки по инструкции',
+  'sim.evidence.paramF': 'Пероральная биодоступность',
+  'sim.evidence.paramTmax': 'Время до пика в плазме',
+  'sim.evidence.paramHalfLife': 'Период полувыведения',
+  'sim.evidence.paramVd': 'Объём распределения',
+  'sim.evidence.paramClearance': 'Клиренс',
+  'sim.evidence.paramRenal': 'Выводится почками в неизменённом виде',
+  'sim.evidence.paramSbpDrop': 'Снижение систолического давления по источнику',
+  'sim.evidence.paramDbpDrop': 'Снижение диастолического давления по источнику',
+  'sim.evidence.paramOnset': 'Начало действия',
+  'sim.evidence.paramDuration': 'Длительность действия',
+  'sim.evidence.modelDoseResponse': 'Кривая доза–эффект',
+  'sim.evidence.modelBaseline': 'Влияние исходного давления',
+  'sim.evidence.modelPooling': 'Потолок при комбинации двух препаратов',
+  'sim.evidence.modelHomeostasis': 'Коэффициенты сердечно-сосудистой модели',
+  'sim.evidence.armBasis': 'Дозы этого варианта — в сравнении с инструкцией',
+  'sim.evidence.rankingBasis': 'На чём основана каждая строка этого списка',
+  'sim.evidence.rankingBasisNote':
+    'Каждая указанная дозировка — зарегистрированная дозировка из инструкции. Изменение давления в каждой ' +
+    'строке оценивается той же моделью доза–эффект, что и полная симуляция.',
 
   'sim.scene.anatomy': 'Анатомия',
   'sim.scene.everySceneNote':

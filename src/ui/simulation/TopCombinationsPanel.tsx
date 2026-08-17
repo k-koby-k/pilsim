@@ -51,7 +51,8 @@ import {
 } from '../../engine'
 import { evaluate } from './adapters'
 import { DRUG_LABEL } from './presets'
-import { signedBp } from './ReportPanel'
+import { EvidenceDisclosure, doseEvidence, modelBasisEvidence, signedBp } from './ReportPanel'
+import { useData } from '../../data/DataProvider'
 
 function doseLine(regimen: Regimen): string {
   return regimen.doses.map((d) => `${DRUG_LABEL[d.substanceId] ?? d.substanceId} ${d.mg} mg`).join(' + ')
@@ -111,6 +112,7 @@ export function TopCombinationsPanel({
   referencePatient?: PatientState | null
 }) {
   const t = useT()
+  const { data: pilsimData } = useData()
   // Static — depends only on the licensed-strength ladders, not the patient.
   const totalCount = useMemo(() => enumerateCandidateRegimens().length, [])
 
@@ -176,6 +178,17 @@ export function TopCombinationsPanel({
             {t('sim.topcombos.excludedNote', { excluded: excludedCount, total: totalCount })}
           </p>
         )}
+        {/* This list is the first clinical claim on the page — five regimens,
+            ranked — so what it rests on is stated once, here, rather than left
+            to be discovered in the report further down. The four terms behind
+            every row's pressure change are the report's own, two cited and two
+            estimated, and they open onto their sources. */}
+        <p className="sim-note">{t('sim.evidence.rankingBasisNote')}</p>
+        <EvidenceDisclosure
+          className="sim-evi-inline"
+          title={t('sim.evidence.rankingBasis')}
+          items={modelBasisEvidence(t, true)}
+        />
         {change && (
           <div className="sim-tie-banner" role="status">
             <strong>{t('sim.topcombos.rerankedFor', { subject: subjectLabel })}</strong>{' '}
@@ -236,6 +249,16 @@ export function TopCombinationsPanel({
                   <li key={i}>{r}</li>
                 ))}
               </ul>
+
+              {/* Every milligram figure on this row against the label that
+                  licenses it, with the label's own sentence one click away. */}
+              <EvidenceDisclosure
+                className="sim-evi-inline"
+                title={t('sim.evidence.armBasis')}
+                items={[...new Set(c.regimen.doses.map((d) => d.substanceId))].flatMap((id) =>
+                  doseEvidence(pilsimData, id, t),
+                )}
+              />
 
               <button
                 type="button"

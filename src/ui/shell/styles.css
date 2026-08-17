@@ -3027,16 +3027,28 @@ input.slider-input::-moz-range-thumb {
 
 /* ===================================================== page + anatomy rail
    Centre column scrolls, the body stays. Substances, Pills and Test subjects
-   share this so the three pages read as one product. */
+   share this so the three pages read as one product.
+
+   SIMULATION DOES NOT USE THIS PAIR, deliberately — see the §1 amendment in
+   research/10-LAYOUT-BLUEPRINT.md and the layout block in simulation.css. Its
+   body is already drawn full width in the centre column's Evidence zone, so a
+   rail there could only repeat it, which is exactly what it was doing. That page
+   wears neither `.page-split` nor `.page-col`; it does not override them. Keep
+   it that way: an opt-out by not applying the classes cannot leave an empty grid
+   track behind, whereas an override of `grid-template-columns` can and did. */
 
 /* THE FRAME — research/10-LAYOUT-BLUEPRINT.md §1. Nav 248px · centre max 940px
-   · rail 360–420px. The rail is a HEADLINE RESULT, not decoration: it gets real
+   · rail 420–520px. The rail is a HEADLINE RESULT, not decoration: it gets real
    width and the figure inside it scales to fill that width, which is why this
-   track is no longer the 296px strip it was. Below 1240px it moves beneath the
-   centre column rather than compressing (see the responsive block). */
+   track is no longer the 296px strip it was. A clinician reported the figure
+   and its readouts too small to read; widened from 360–420px so the body and
+   its numbers render at a size that survives a projector, once the figure
+   itself was confirmed to actually use the width it is given (see the `rail`
+   fill chain below). Below 1240px it moves beneath the centre column rather
+   than compressing (see the responsive block). */
 .page-split {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(360px, 26vw, 420px);
+  grid-template-columns: minmax(0, 1fr) clamp(420px, 30vw, 520px);
   gap: var(--gap-section);
   align-items: start;
 }
