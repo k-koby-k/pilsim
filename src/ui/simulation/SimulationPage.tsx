@@ -81,7 +81,10 @@ import { BenchPanel } from './BenchPanel'
 import { ConcentrationChart, EngagementChart, HaemodynamicChart, type Overlay } from './LiveCharts'
 import { ScenePanel, useSceneBinding } from './ScenePanel'
 import { sceneChoiceLines, type SceneId } from './scenes'
-import { DisclaimerPanel, ReportPanel, signedBp } from './ReportPanel'
+// DisclaimerPanel is deliberately NOT imported: the disclaimer is rendered once, by
+// <ReportPanel sections={['headline']}> in the Answer zone, which §8.4 requires to sit
+// above the scores. This page used to mount a second copy of its own at the foot.
+import { ReportPanel, signedBp } from './ReportPanel'
 import { PillPicker, RunPanel, SubjectPicker, settingsSummary, type RunOptions } from './RunControls'
 import { TopCombinationsPanel } from './TopCombinationsPanel'
 import { RankedList } from './RankedList'

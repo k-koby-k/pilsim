@@ -33,7 +33,7 @@ import {
   saltDetailCaption,
   type Pill,
 } from './model'
-import { VERDICT_LABEL, verdictOf, type CompositionEvaluation } from './rulesAdapter'
+import { VERDICT_KEY, verdictOf, type CompositionEvaluation } from './rulesAdapter'
 
 /** Only a fired prohibition earns a coloured edge. "Warn" and "clear" stay plain. */
 const VERDICT_TONE: Record<string, 'danger' | 'warn' | 'good' | undefined> = {
@@ -147,7 +147,7 @@ export function PillGridCard({
         }
       })}
       meta={t('pillcard.excipientCount', { n: exc.length, interval: pill.dosingIntervalH ?? '' })}
-      status={{ label: VERDICT_LABEL[verdict], tone: VERDICT_STATUS_TONE[verdict] }}
+      status={{ label: t(VERDICT_KEY[verdict]), tone: VERDICT_STATUS_TONE[verdict] }}
     />
   )
 }

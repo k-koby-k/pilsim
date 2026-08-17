@@ -36,6 +36,12 @@ export interface OrganSceneProps {
   frame: EffectFrame | null
   history?: EffectFrame[]
   caption?: string
+  /**
+   * Render the figure's OWN tab strip. The published component defaults this to
+   * true, so a host that draws its own selector — ScenePanel does — must pass
+   * false or the page ends up with two scene tab strips stacked on one figure.
+   */
+  showSelector?: boolean
 }
 
 export interface AffectedAnatomyProps {

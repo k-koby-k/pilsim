@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from 'react'
 import type { EffectFrame } from '../../types'
-import { useT } from '../../i18n'
+import { useT, type DictKey } from '../../i18n'
 import type { EvaluationResult } from './adapters'
 import { OrganPanel } from './OrganPanel'
 import {
@@ -69,6 +69,16 @@ export function ScenePanel({
   const Scene = binding.OrganScene
   const Static = binding.AffectedAnatomy
 
+  // `binding.scenes` arrives as the organs module's RAW English defs. The tab strip
+  // below is the only selector on the page now, so it has to do its own lookup
+  // rather than lean on the figure's — same `organ.scene.<id>.*` keys the figure
+  // uses, falling back to the published English if an id ever has no entry.
+  const localized = (id: string, field: 'label' | 'blurb', raw?: string) => {
+    const key = `organ.scene.${id}.${field}` as DictKey
+    const out = t(key)
+    return out === key ? raw : out
+  }
+
   return (
     <section className="sim-card sim-organ-card sim-scene" aria-label={t('sim.scene.anatomy')}>
       <header className="sim-scene-head">
@@ -85,18 +95,29 @@ export function ScenePanel({
               aria-selected={current?.id === s.id}
               className={current?.id === s.id ? 'is-active' : ''}
               onClick={() => onScene(s.id)}
-              title={s.blurb}
+              title={localized(s.id, 'blurb', s.blurb)}
             >
-              {s.label}
+              {localized(s.id, 'label', s.label)}
             </button>
           ))}
         </div>
       )}
 
-      {current?.blurb && <p className="sim-scene-blurb">{current.blurb}</p>}
+      {/* The scene's blurb is NOT repeated here. <OrganScene> prints it in its own
+          figcaption, translated, directly under the figure it describes — this copy
+          sat two elements above the same sentence and was English-only besides. */}
 
       {Scene && current ? (
-        <Scene scene={current.id} frame={frame} history={history} caption={caption} />
+        // `showSelector={false}` is load-bearing: the figure ships its own tab strip
+        // and defaults it ON, so without this the page renders two scene tab strips,
+        // one inside the other, both labelled "Scene".
+        <Scene
+          scene={current.id}
+          frame={frame}
+          history={history}
+          caption={caption}
+          showSelector={false}
+        />
       ) : live || !Static ? (
         // The live figure is already correct and frame-bound; it stays the
         // fallback rather than a placeholder, so nothing is lost while the

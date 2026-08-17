@@ -16,7 +16,7 @@ import { useT, type DictKey } from '../../i18n'
 import type { RuleHit } from '../../types'
 import { ProvenanceDetail, SeverityBadge } from '../shell/primitives'
 import {
-  VERDICT_LABEL,
+  VERDICT_KEY,
   verdictOf,
   type CompositionEvaluation,
   type Verdict,
@@ -36,7 +36,7 @@ export function VerdictBanner({ evaluation }: { evaluation: CompositionEvaluatio
     <div className={`verdict-banner verdict--${v}`}>
       <VerdictGlyph verdict={v} />
       <div className="grow">
-        <strong>{VERDICT_LABEL[v]}</strong>
+        <strong>{t(VERDICT_KEY[v])}</strong>
         <div style={{ color: 'var(--text-dim)', fontWeight: 400, marginTop: 2 }}>
           {t(VERDICT_TEXT_KEY[v])}
         </div>

@@ -120,12 +120,14 @@ export function DerivedPanel({
 
       {has('shifts') && twin.appliedPresets.length > 0 && (
         <section className="subj-shifts">
-          <h4>
-            {t('subject.derivedPanel.whatMoved')}
-            <span className="subj-shift-count">
-              {t('subject.derivedPanel.stateVarCount', { n: shifts.length })}
-            </span>
-          </h4>
+          {/* No heading of its own. This section only ever renders inside the Test
+              subjects EVIDENCE zone, whose <h2> is `subject.zone.evidence` — the
+              same sentence, word for word ("What the conditions moved"). The zone
+              heading is the one that stays; what is left here is the count, which
+              the zone heading does not carry. */}
+          <p className="subj-shift-count">
+            {t('subject.derivedPanel.stateVarCount', { n: shifts.length })}
+          </p>
           {shifts.length === 0 ? (
             <p className="subj-note subj-note-warn">
               {t('subject.derivedPanel.nothingMoved')}

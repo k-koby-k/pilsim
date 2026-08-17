@@ -1127,7 +1127,10 @@ export function ReportPanel({
 
       {has('limits') && (
       <section className="sim-report-section sim-limits">
-        <h4>{t('sim.report.whatModelDoesNotRepresent')}</h4>
+        {/* No heading. The only place this section renders is inside the Detail
+            zone's disclosure, whose button already reads "What this model does not
+            represent" (`sim.detail.limits`) — the identical sentence, one element
+            above. The disclosure's label is the heading. */}
         <ul className="sim-prose">
           {STRUCTURAL_LIMITATIONS.map((k) => (
             <li key={k}>{t(k)}</li>

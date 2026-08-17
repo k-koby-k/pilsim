@@ -182,7 +182,10 @@ export function BenchPanel({
         <RankedList
           options={bench.ranked ?? []}
           highlights={{ [DUAL_RAAS_ARM_ID]: 'bad' }}
-          notes={{ [DUAL_RAAS_ARM_ID]: 'dual RAAS blockade' }}
+          // Same key TopCombinationsPanel tags this arm with, so the two panels
+          // cannot name one thing two ways — and so it is not English-only here
+          // while the tag two zones up is translated.
+          notes={{ [DUAL_RAAS_ARM_ID]: t('sim.topcombos.tagDualRaas') }}
         />
       ) : (
         bench.done && (

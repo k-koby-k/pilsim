@@ -443,19 +443,13 @@
   padding-bottom: var(--gap-group);
   border-bottom: var(--border);
 }
-.subj-shifts h4 {
-  display: flex;
-  justify-content: space-between;
-  gap: var(--gap-item);
-  margin: 0 0 var(--gap-item);
-  font-size: var(--fs-xs);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
+/* The heading that used to sit here is gone — it repeated the EVIDENCE zone's own
+   <h2> word for word. The count is all that is left, so it carries its own type
+   rather than inheriting the heading's. */
 .subj-shift-count {
+  margin: 0 0 var(--gap-item);
   font-family: var(--font-mono);
+  font-size: var(--fs-xs);
   font-weight: 500;
   text-transform: none;
   letter-spacing: 0;

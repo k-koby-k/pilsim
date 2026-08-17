@@ -36,6 +36,7 @@
 import type { PatientInputs, PatientState, Regimen, RuleHit, SeverityId, DrugId } from '../../types'
 import type { RulesFile, RuleRecord, TriggerAtom, TriggerNode } from '../../data/load'
 import { SUBSTANCE_CLASSES, evaluateRules, type EvaluationResult } from '../../rules/evaluate'
+import type { DictKey } from '../../i18n'
 
 // ---------------------------------------------------------------------------
 
@@ -339,9 +340,23 @@ export function verdictOf(e: CompositionEvaluation): Verdict {
   return 'clear'
 }
 
+/**
+ * English fallback only — the same arrangement `SEVERITY` uses in shell/primitives.
+ * NOTHING ON SCREEN SHOULD READ THIS DIRECTLY: render `t(VERDICT_KEY[v])` instead,
+ * or Uzbek and Russian get an English verdict. Two call sites used to print this
+ * map while `findings.verdict.*` sat translated and unused in the dictionary.
+ */
 export const VERDICT_LABEL: Record<Verdict, string> = {
   blocked: 'Blocked',
   override: 'Override required',
   warn: 'Warnings',
   clear: 'No conflicts',
+}
+
+/** The translated verdict. One implementation, used by every verdict on screen. */
+export const VERDICT_KEY: Record<Verdict, DictKey> = {
+  blocked: 'findings.verdict.blocked',
+  override: 'findings.verdict.override',
+  warn: 'findings.verdict.warn',
+  clear: 'findings.verdict.clear',
 }

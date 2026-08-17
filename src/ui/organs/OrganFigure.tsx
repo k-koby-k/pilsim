@@ -73,11 +73,16 @@ export function OrganFigure({
 
   // One line, whichever state the figure is in. The full sentence it replaces said the
   // same thing three times over; what a reader needs is the state, not the essay.
+  //
+  // The clock is `organ.scene.clockStatus` — the SAME key the scene view renders, so the
+  // two figures cannot drift apart and the line is translated in all three languages.
+  // It used to be a hardcoded English template here, which meant a Uzbek or Russian
+  // reader saw the scene's clock translated and this one not.
   const status = idle
     ? t('organ.figure.restingBaseline')
     : untreated
       ? t('organ.figure.untreated')
-      : `t = ${f.t_h.toFixed(1)} h since first dose`
+      : t('organ.scene.clockStatus', { t: f.t_h.toFixed(1) })
 
   if (variant === 'rail') {
     return (
